@@ -18,4 +18,5 @@ All notable changes to tts-axi are documented here. The format follows
 - A memory guard stops and unloads a helper on critical pressure, any pressure rise or swap growth over 256 MiB a minute, waits for pressure to settle, retries once on the CPU, and otherwise fails without writing anything. One render runs at a time.
 - Default voices: Hugh then Bryony (English), Davi then Kauã, Manuela-Lu, Débora (Portuguese), Augustin then Coralie (French); default speed duration_delta 0.15, also on the Core ML route, whose bundle is prepared per speed.
 - The library at `~/Music/tts-axi`: one folder per episode with its audio, transcript and `episode.json`, plus a regenerated `index.html` and `feed.xml`. `tts-axi library` lists, `library rm` deletes, `library rebuild` refreshes.
+- A justfile: `just check`, `just install`, `just setup`, `just smoke` (one real spoken line) and `just validate`.
 - `tts-axi voices`, `tts-axi doctor [--fix]`, `tts-axi skill install` (Claude Code, Codex and Pi) and `tts-axi version`.

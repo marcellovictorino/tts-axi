@@ -31,6 +31,16 @@ tts-axi skill install     # teaches Claude Code, Codex and Pi to use it
 
 `doctor --fix` checks every download against a pinned SHA-256, and loads no model. Running it again is a no-op.
 
+From a checkout, [just](https://github.com/casey/just) (`brew install just`) runs the same steps:
+
+```bash
+just install    # go install . into ~/go/bin
+just setup      # tts-axi doctor --fix
+just skill      # tts-axi skill install
+just smoke      # speak one line for real into a throwaway library and check it
+just validate   # lint, tests, install, setup, doctor and smoke, in that order
+```
+
 ## Quick start
 
 ```bash
@@ -125,7 +135,7 @@ Phonon's speed is a conditioning input. The Python runtime takes it per call; th
 
 ## Development
 
-See [AGENTS.md](AGENTS.md). `go test ./...` needs no model, network or Neural Engine: the helpers are faked.
+See [AGENTS.md](AGENTS.md). `just check` runs what CI runs (vet, lint, tests); `just` lists every recipe. The tests need no model, network or Neural Engine: the helpers are faked.
 
 ## Licence
 

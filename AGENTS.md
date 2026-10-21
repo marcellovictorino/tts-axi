@@ -12,7 +12,7 @@ golangci-lint run ./...        # config in .golangci.yml (brew install golangci-
 TTS_AXI_BUILD_HELPER=1 go test -run TestHelperBuilds ./internal/engine   # download the runtime and build the Swift helper
 ```
 
-Run `go test ./...` and `golangci-lint run ./...` before every commit.
+Run `just check` (vet, golangci-lint, `go test ./...`) before every commit. `just` lists the other recipes: `install`, `setup`, `smoke` (a real spoken line into a throwaway library) and `validate` (all of them).
 
 ## Rules
 
