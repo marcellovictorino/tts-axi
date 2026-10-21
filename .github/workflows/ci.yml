@@ -13,8 +13,22 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      # The command-level tests join real audio with ffmpeg; they skip without it.
+      - run: brew install ffmpeg
       - run: go vet ./...
       - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.14.0
       - run: go test ./...
+  helper:
+    # Downloads Gradium's pinned runtime (39 MB) and builds the Swift helper,
+    # so a change to the embedded source cannot break `tts-axi doctor --fix`.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: go test -run TestHelperBuildsAgainstThePinnedRuntime -v ./internal/engine
+        env:
+          TTS_AXI_BUILD_HELPER: "1"
