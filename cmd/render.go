@@ -72,6 +72,7 @@ of different languages can share a script.`,
 	}
 	f.register(c, true)
 	c.Flags().StringArrayVar(&mapping, "voice", nil, "give a speaker a voice, Speaker=Voice (repeatable)")
+	completeSpeakFlags(c)
 	return c
 }
 

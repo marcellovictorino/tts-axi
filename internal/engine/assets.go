@@ -39,8 +39,19 @@ const BundleName = "phonon-31m-en-coreml"
 // duration_delta conditioner is read from here to set the speed.
 const Checkpoint = "https://huggingface.co/gradium/phonon-31m-en/resolve/8acf8881a96315724c72ed3aad2a0900d1b230ba/model.safetensors"
 
-// MultilingualModel speaks French and Portuguese through ptts on the CPU.
-const MultilingualModel = "hf://gradium/phonon-40m-multilingual"
+// The multilingual model speaks French and Portuguese through ptts on the
+// CPU. It is gated on Hugging Face, so it is pinned to one revision: once its
+// files are in the Hugging Face cache, ptts reads a pinned revision from the
+// cache even when the Hub refuses the request, so renders never need the
+// token again. Only the download does.
+const (
+	MultilingualRepo     = "gradium/phonon-40m-multilingual"
+	MultilingualRevision = "a411985d04262e21e306e505bd59d8fe30bd486b"
+	MultilingualModel    = "hf://" + MultilingualRepo + "@" + MultilingualRevision
+)
+
+// multilingualFiles are the files ptts reads for the q8 model.
+var multilingualFiles = []string{"config.json", "tokenizer.json", "model.q8.gguf", "default-voice.safetensors"}
 
 // PttsVersion is the Python runtime uv installs for the multilingual route.
 const PttsVersion = "0.4.1"

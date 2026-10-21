@@ -80,7 +80,32 @@ A deck for `deck` is Markdown slides separated by `---` (Marp or Slidev), with e
 
 The first voice speaks by default; script speakers take the others in order. `tts-axi voices` lists all 64 catalog voices. The default speed is Phonon's `duration_delta` at `0.15`, a little slower than the model's own pace; `--speed` changes it.
 
-Portuguese and French use the gated [phonon-40m-multilingual](https://huggingface.co/gradium/phonon-40m-multilingual) model (CC BY-NC 4.0, non-commercial). Accept its terms on Hugging Face, then sign in once with `uvx --from huggingface_hub hf auth login` or set `HF_TOKEN`. tts-axi never stores the token.
+## Portuguese and French
+
+Portuguese and French use the gated [phonon-40m-multilingual](https://huggingface.co/gradium/phonon-40m-multilingual) model (CC BY-NC 4.0, non-commercial). It needs a Hugging Face token **once**, to download it. tts-axi pins the model to one revision, so after that every render reads it from the local cache and never asks for the token again: no sign-in prompt, no fingerprint per sound.
+
+1. Create a free account at [huggingface.co/join](https://huggingface.co/join).
+2. Open [the model page](https://huggingface.co/gradium/phonon-40m-multilingual) and accept its terms.
+3. Create a token at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens): type **Read** is enough. A fine-grained token needs "Read access to contents of all public gated repos you can access".
+4. Give the token to one `tts-axi doctor --fix` run, in whichever way suits you:
+
+   ```bash
+   # 1Password: one Touch ID, once
+   HF_TOKEN="$(op read 'op://<vault>/<item>/<field>')" tts-axi doctor --fix
+
+   # macOS Keychain: store it once (you are prompted for it, so it stays out of your shell history) ...
+   security add-generic-password -a "$USER" -s huggingface-token -w
+   # ... then use it once
+   HF_TOKEN="$(security find-generic-password -a "$USER" -s huggingface-token -w)" tts-axi doctor --fix
+
+   # Or Hugging Face's own sign-in, which saves the token in ~/.cache/huggingface/token
+   uvx --from huggingface_hub hf auth login
+   tts-axi doctor --fix
+   ```
+
+5. `tts-axi doctor` now shows `multilingual model: ok`. Try `tts-axi say "Bom dia" --lang pt`.
+
+The token is only read by Hugging Face's own download tool; tts-axi never stores or prints it. With the model downloaded you can remove a saved token (`uvx --from huggingface_hub hf auth logout`) and French and Portuguese keep working.
 
 ## Memory
 
@@ -103,6 +128,16 @@ tailscale serve --bg ~/Music/tts-axi
 ```
 
 Open the address it prints on the phone. To give `feed.xml` full links, put that address in `~/.config/tts-axi/config.toml` as `base_url`. Podcast apps that fetch feeds from their own servers cannot reach a private address; the web page works everywhere.
+
+## Shell completion
+
+Commands, flags, voice names, languages and episode ids complete in the shell. For zsh, one line:
+
+```bash
+echo 'source <(tts-axi completion zsh)' >> ~/.zshrc
+```
+
+Open a new terminal afterwards. Your `~/.zshrc` must load completion first (`autoload -U compinit && compinit`), which most setups, Oh My Zsh included, already do. `tts-axi completion --help` covers bash and fish.
 
 ## Configuration
 

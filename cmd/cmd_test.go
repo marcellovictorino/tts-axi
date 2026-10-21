@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/marcellovictorino/tts-axi/internal/engine"
 	"github.com/marcellovictorino/tts-axi/internal/guard"
 	"github.com/marcellovictorino/tts-axi/internal/library"
 	"github.com/marcellovictorino/tts-axi/internal/testutil"
@@ -407,5 +408,53 @@ func TestVoicesListsDefaultsFirst(t *testing.T) {
 		if !strings.Contains(firstEight, n) {
 			t.Errorf("%q not among the first eight rows:\n%s", n, firstEight)
 		}
+	}
+}
+
+// Intent (owner request: grant permission once, not every time a sound is
+// made): without the gated model or a token, Portuguese fails with the way to
+// fix it; one doctor --fix with a token downloads the model; after that
+// Portuguese speaks with no token at all.
+func TestPortugueseNeedsTheTokenOnlyOnce(t *testing.T) {
+	e := newEnv(t)
+	t.Setenv("HF_HOME", t.TempDir()) // an empty cache, no token
+	r := e.run("say", "Bom dia.", "--lang", "pt").fails(t, 1, "French and Portuguese model is not downloaded")
+	if !strings.Contains(r.out, "HF_TOKEN=<your token> tts-axi doctor --fix") || len(e.episodes()) != 0 {
+		t.Errorf("output:\n%s", r.out)
+	}
+	if r := e.run("doctor"); !strings.Contains(r.out, "multilingual model,warn,") {
+		t.Errorf("doctor:\n%s", r.out)
+	}
+
+	t.Setenv("HF_TOKEN", "hf_example")
+	e.run("doctor", "--fix").ok(t)
+	t.Setenv("HF_TOKEN", "")
+
+	if r := e.run("doctor"); !strings.Contains(r.out, "multilingual model,ok,") {
+		t.Errorf("doctor after the download:\n%s", r.out)
+	}
+	jobs := testutil.LogJobs(t)
+	e.run("say", "Bom dia.", "--lang", "pt").ok(t)
+	if j := jobs(); len(j) != 1 || j[0].Model != engine.MultilingualModel {
+		t.Errorf("want the pinned model, got %+v", j)
+	}
+}
+
+// Intent (owner request: shell completion): voices, languages and
+// episode ids complete.
+func TestCompletion(t *testing.T) {
+	e := newEnv(t)
+	if r := e.run("__complete", "say", "--voice", ""); !strings.Contains(r.out, "Débora\tpt\n") || !strings.Contains(r.out, "Hugh\ten\n") {
+		t.Errorf("voices:\n%s", r.out)
+	}
+	if r := e.run("__complete", "deck", "x.md", "--lang", ""); !strings.HasPrefix(r.out, "en\npt\nfr\n") {
+		t.Errorf("languages:\n%s", r.out)
+	}
+	e.run("say", "One.").ok(t)
+	if r := e.run("__complete", "library", "rm", ""); !strings.Contains(r.out, "2026-10-22-one\tOne\n") {
+		t.Errorf("episodes:\n%s", r.out)
+	}
+	if r := e.run("completion", "zsh").ok(t); !strings.HasPrefix(r.out, "#compdef tts-axi") {
+		t.Errorf("zsh script starts:\n%.100s", r.out)
 	}
 }

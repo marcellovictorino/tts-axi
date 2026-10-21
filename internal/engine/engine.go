@@ -216,6 +216,9 @@ func (e *Engine) attempt(ctx context.Context, job Job, route Route, base guard.S
 		name = e.Paths.HelperBin()
 		input = map[string]any{"model": dir, "unit": unit, "lang": job.Lang, "items": job.Items}
 	case PttsCPU:
+		if e.MultilingualModel == "" && !MultilingualCached() && !HFSignedIn() {
+			return 0, errMissing("the French and Portuguese model is not downloaded, and it needs a Hugging Face token once")
+		}
 		script, err := e.WritePttsHelper()
 		if err != nil {
 			return 0, err

@@ -75,8 +75,8 @@ clip per slide, `deck.mp3` with a chapter per slide, `timings.json` and
 - The `engine` field says what spoke: `ane` (Neural Engine), `cpu`, or
   `ptts-cpu` (Portuguese and French). A `fallback` field says why the Neural
   Engine was not used.
-- Portuguese and French need the gated `phonon-40m-multilingual` model: the
-  user accepts its terms on Hugging Face and signs in once. Never ask for or
-  handle the token yourself.
+- Portuguese and French need the gated `phonon-40m-multilingual` model,
+  downloaded once by the user with a Hugging Face token (`tts-axi doctor`
+  says whether it is there). Never ask for or handle the token yourself.
 - Tell the user where the audio is (`path`) and that `index.html` in the
   library plays everything.

@@ -149,6 +149,12 @@ func speakLines(ctx context.Context, a *App, stage string, lines []line, speed f
 // speakError turns an engine failure into a user-facing error with next steps.
 func speakError(err error) error {
 	switch {
+	case engine.IsMissing(err) && strings.Contains(err.Error(), "French and Portuguese"):
+		return output.Fail([]string{
+			"accept the terms at huggingface.co/" + engine.MultilingualRepo + ", then run once: HF_TOKEN=<your token> tts-axi doctor --fix",
+			"see \"Portuguese and French\" in the README for keeping the token in 1Password or the Keychain",
+			"nothing was written",
+		}, "%v", err)
 	case engine.IsMissing(err):
 		return output.Fail([]string{"run `tts-axi doctor --fix` to install the speech runtime and model"}, "%v", err)
 	case guard.IsStop(err):
@@ -157,7 +163,7 @@ func speakError(err error) error {
 	msg := err.Error()
 	help := []string{"nothing was written", "run `tts-axi doctor` to check the installation"}
 	if strings.Contains(msg, "401") || strings.Contains(msg, "403") || strings.Contains(strings.ToLower(msg), "gated") || strings.Contains(strings.ToLower(msg), "token") {
-		help = append([]string{"French and Portuguese need the gated phonon-40m-multilingual model: accept its terms on Hugging Face, then set HF_TOKEN or run `uvx --from huggingface_hub hf auth login`"}, help...)
+		help = append([]string{"French and Portuguese need the gated phonon-40m-multilingual model: accept its terms on Hugging Face, then run once: HF_TOKEN=<your token> tts-axi doctor --fix"}, help...)
 	}
 	return output.Fail(help, "speaking failed: %s", msg)
 }

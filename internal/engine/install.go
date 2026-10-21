@@ -53,7 +53,8 @@ func (e *Engine) RuntimeInstalled() bool {
 // InstallRuntime downloads and unpacks the released framework and Swift
 // wrapper (about 39 MB), checking each against its pinned size and SHA-256.
 func (e *Engine) InstallRuntime(ctx context.Context) error {
-	if e.RuntimeInstalled() {
+	// The runtime is only needed to build the helper.
+	if e.RuntimeInstalled() || e.HelperCurrent() {
 		return nil
 	}
 	for _, a := range []asset{frameworkAsset, wrapperAsset} {
@@ -194,6 +195,72 @@ func (e *Engine) WritePttsHelper() (string, error) {
 func (e *Engine) PttsArgs(script string) []string {
 	return []string{"run", "--quiet", "--no-project", "--python", "3.12",
 		"--with", "ptts==" + PttsVersion, "python", "-I", script}
+}
+
+// hfHubCache is the Hugging Face cache folder, as huggingface_hub and ptts
+// resolve it.
+func hfHubCache() string {
+	if v := os.Getenv("HF_HUB_CACHE"); v != "" {
+		return v
+	}
+	if v := os.Getenv("HF_HOME"); v != "" {
+		return filepath.Join(v, "hub")
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".cache", "huggingface", "hub")
+}
+
+// MultilingualCached reports whether the pinned multilingual model is in the
+// Hugging Face cache, so French and Portuguese work with no sign-in.
+func MultilingualCached() bool {
+	snap := filepath.Join(hfHubCache(), "models--"+strings.ReplaceAll(MultilingualRepo, "/", "--"), "snapshots", MultilingualRevision)
+	for _, f := range multilingualFiles {
+		if _, err := os.Stat(filepath.Join(snap, f)); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// HFSignedIn reports whether a Hugging Face token is available: HF_TOKEN in
+// the environment, or the file `hf auth login` writes. The token is never read.
+func HFSignedIn() bool {
+	if os.Getenv("HF_TOKEN") != "" {
+		return true
+	}
+	home := os.Getenv("HF_HOME")
+	if home == "" {
+		h, _ := os.UserHomeDir()
+		home = filepath.Join(h, ".cache", "huggingface")
+	}
+	_, err := os.Stat(filepath.Join(home, "token"))
+	return err == nil
+}
+
+// InstallMultilingual downloads the pinned multilingual model (about 75 MB)
+// into the Hugging Face cache with the hf command, using whatever token the
+// environment holds. It loads no model.
+func (e *Engine) InstallMultilingual(ctx context.Context) error {
+	if MultilingualCached() {
+		return nil
+	}
+	args := append([]string{"tool", "run", "--quiet", "--from", "huggingface_hub", "hf", "download", MultilingualRepo},
+		multilingualFiles...)
+	args = append(args, "--revision", MultilingualRevision)
+	var stderr bytes.Buffer
+	cmd := exec.CommandContext(ctx, e.uv(), args...)
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		msg := firstLines(stderr.String(), 3)
+		if strings.Contains(msg, "401") || strings.Contains(msg, "403") || strings.Contains(strings.ToLower(msg), "gated") {
+			msg = "Hugging Face refused the download: accept the model's terms at huggingface.co/" + MultilingualRepo + " with the account the token belongs to (" + msg + ")"
+		}
+		return fmt.Errorf("downloading the French and Portuguese model failed: %s", msg)
+	}
+	if !MultilingualCached() {
+		return fmt.Errorf("the French and Portuguese model download finished, but its files are not in %s", hfHubCache())
+	}
+	return nil
 }
 
 // WarmPtts makes uv fetch ptts now, so the first French or Portuguese render

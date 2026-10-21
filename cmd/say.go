@@ -93,6 +93,8 @@ French).
 	f.register(c, true)
 	c.Flags().StringVarP(&file, "file", "f", "", "read the text from a file (- for standard input)")
 	c.Flags().StringVar(&voice, "voice", "", "voice name (see `tts-axi voices`)")
+	completeSpeakFlags(c)
+	_ = c.RegisterFlagCompletionFunc("voice", completeVoices)
 	return c
 }
 

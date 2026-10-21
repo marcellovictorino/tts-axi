@@ -108,6 +108,9 @@ of the simple built-in rendering.
 	c.Flags().StringVar(&voice, "voice", "", "narrator voice (see `tts-axi voices`)")
 	c.Flags().StringVar(&images, "images", "", "folder of exported slide pictures (png, jpg or webp), one per slide")
 	c.Flags().DurationVar(&silent, "silent", 4*time.Second, "how long a slide without notes stays up")
+	completeSpeakFlags(c)
+	_ = c.RegisterFlagCompletionFunc("voice", completeVoices)
+	_ = c.MarkFlagDirname("images")
 	return c
 }
 

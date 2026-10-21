@@ -15,7 +15,9 @@ import (
 	"io"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -45,7 +47,15 @@ const (
 // under a helper's name. Call it first in TestMain.
 func MaybeRunFake() {
 	switch filepath.Base(os.Args[0]) {
-	case "tts-axi-helper", "uv":
+	case "uv":
+		if slices.Contains(os.Args, "download") {
+			os.Exit(fakeHFDownload())
+		}
+		if slices.Contains(os.Args, "-c") {
+			os.Exit(0) // `uv run ... python -c "import ptts"`: ptts is "installed"
+		}
+		os.Exit(fakeHelper())
+	case "tts-axi-helper":
 		os.Exit(fakeHelper())
 	}
 }
@@ -96,6 +106,51 @@ func fakeHelper() int {
 	}
 	emit(map[string]any{"event": "done"})
 	return 0
+}
+
+// fakeHFDownload stands in for `uv tool run --from huggingface_hub hf
+// download <repo> <files...> --revision <rev>`: with a token it writes the
+// files into the cache layout huggingface_hub uses; without one it fails as
+// the Hub does for a gated model.
+func fakeHFDownload() int {
+	if os.Getenv("HF_TOKEN") == "" {
+		fmt.Fprintln(os.Stderr, "401 Client Error: gated repo, access restricted")
+		return 1
+	}
+	args := os.Args[slices.Index(os.Args, "download")+1:]
+	repo, rev := args[0], ""
+	var files []string
+	for i := 1; i < len(args); i++ {
+		if args[i] == "--revision" {
+			rev = args[i+1]
+			i++
+			continue
+		}
+		files = append(files, args[i])
+	}
+	snap := filepath.Join(os.Getenv("HF_HOME"), "hub", "models--"+strings.ReplaceAll(repo, "/", "--"), "snapshots", rev)
+	if err := os.MkdirAll(snap, 0o755); err != nil {
+		return 1
+	}
+	for _, f := range files {
+		if err := os.WriteFile(filepath.Join(snap, f), []byte("fake "+f), 0o644); err != nil {
+			return 1
+		}
+	}
+	return 0
+}
+
+// CacheMultilingual puts the pinned multilingual model's files in the
+// Hugging Face cache under HF_HOME, as a finished download leaves them.
+func CacheMultilingual(t *testing.T) {
+	t.Helper()
+	t.Setenv("HF_TOKEN", "test-token")
+	cmd := exec.Command(filepath.Join(os.Getenv("TTS_AXI_FAKE_BIN"), "uv"), "tool", "run", "--from", "huggingface_hub", "hf", "download",
+		engine.MultilingualRepo, "config.json", "tokenizer.json", "model.q8.gguf", "default-voice.safetensors", "--revision", engine.MultilingualRevision)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("caching the model: %v %s", err, out)
+	}
+	t.Setenv("HF_TOKEN", "")
 }
 
 func emit(v map[string]any) {
@@ -169,6 +224,13 @@ func Install(t *testing.T, home string) {
 	bin := t.TempDir()
 	must(t, os.Symlink(exe, filepath.Join(bin, "uv")))
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("TTS_AXI_FAKE_BIN", bin)
+
+	// A Hugging Face cache of its own, with the multilingual model in it, and
+	// no token: the state after a one-time download.
+	t.Setenv("HF_HOME", t.TempDir())
+	t.Setenv("HF_HUB_CACHE", "")
+	CacheMultilingual(t)
 }
 
 // FakeEnv steers the fakes for one test.

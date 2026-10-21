@@ -26,7 +26,13 @@ French and Portuguese route, memory, the library folder and the agent skill.
 --fix downloads Gradium's Phonon runtime (39 MB) and the English Core ML model
 (137 MB) into ~/.tts-axi, checks both against pinned checksums, builds the
 Swift helper with swiftc, prepares the default speed, and installs ptts for
-French and Portuguese with uv. It loads no model. Running it again is a no-op.`,
+French and Portuguese with uv. It loads no model. Running it again is a no-op.
+
+With a Hugging Face token in HF_TOKEN (or saved by "hf auth login"), --fix
+also downloads the gated French and Portuguese model, once. Renders then read
+it from the cache and never need the token again:
+
+  HF_TOKEN="$(op read 'op://<vault>/<item>/<field>')" tts-axi doctor --fix`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := a.load(); err != nil {
@@ -62,6 +68,13 @@ French and Portuguese with uv. It loads no model. Running it again is a no-op.`,
 					return e.WarmPtts(ctx)
 				})
 				step("creating the library", func() error { return a.library().Rebuild() })
+				// The gated model needs a token once; without one this step
+				// is skipped and the row below says how to give it.
+				if engine.HFSignedIn() && !engine.MultilingualCached() {
+					if _, err := exec.LookPath("uv"); err == nil {
+						step("downloading the French and Portuguese model", func() error { return e.InstallMultilingual(ctx) })
+					}
+				}
 			}
 
 			var rows []output.Obj
@@ -153,25 +166,17 @@ func speedReady(e *engine.Engine, speed float64) (string, bool) {
 	return dir, err == nil
 }
 
-// multilingualStatus looks for the gated model in the Hugging Face cache and
-// for a sign-in, without reading any token.
+// multilingualStatus looks for the pinned gated model in the Hugging Face
+// cache and for a sign-in, without reading any token.
 func multilingualStatus() (string, string, string) {
-	home, _ := os.UserHomeDir()
-	hfHome := os.Getenv("HF_HOME")
-	if hfHome == "" {
-		hfHome = filepath.Join(home, ".cache", "huggingface")
+	const name = "multilingual model"
+	switch {
+	case engine.MultilingualCached():
+		return name, "ok", "phonon-40m-multilingual is downloaded; French and Portuguese need no sign-in"
+	case engine.HFSignedIn():
+		return name, "warn", "not downloaded yet (75 MB): tts-axi doctor --fix downloads it with your Hugging Face token"
 	}
-	if _, err := os.Stat(filepath.Join(hfHome, "hub", "models--gradium--phonon-40m-multilingual")); err == nil {
-		return "multilingual model", "ok", "phonon-40m-multilingual is downloaded"
-	}
-	signedIn := os.Getenv("HF_TOKEN") != ""
-	if _, err := os.Stat(filepath.Join(hfHome, "token")); err == nil {
-		signedIn = true
-	}
-	if signedIn {
-		return "multilingual model", "warn", "downloads on the first French or Portuguese render (75 MB); accept its terms on huggingface.co/gradium/phonon-40m-multilingual first"
-	}
-	return "multilingual model", "warn", "gated: accept its terms on huggingface.co/gradium/phonon-40m-multilingual, then `uvx --from huggingface_hub hf auth login`; English works without it"
+	return name, "warn", "not downloaded: it needs a Hugging Face token once, see \"Portuguese and French\" in the README; English works without it"
 }
 
 func memoryStatus(a *App) (string, string, string) {

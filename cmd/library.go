@@ -55,9 +55,10 @@ then open the address it prints on the phone. Set base_url in
 		},
 	}
 	rm := &cobra.Command{
-		Use:   "rm <episode>...",
-		Short: "Delete episodes and refresh the index and feed",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "rm <episode>...",
+		ValidArgsFunction: completeEpisodes(a),
+		Short:             "Delete episodes and refresh the index and feed",
+		Args:              cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := a.load(); err != nil {
 				return err
