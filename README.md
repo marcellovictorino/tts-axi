@@ -31,6 +31,8 @@ tts-axi skill install     # teaches Claude Code, Codex and Pi to use it
 
 `doctor --fix` checks every download against a pinned SHA-256, and loads no model. Running it again is a no-op.
 
+That is all English needs: no account and no token. Only Portuguese and French need the one-time Hugging Face step in [Portuguese and French](#portuguese-and-french).
+
 From a checkout, [just](https://github.com/casey/just) (`brew install just`) runs the same steps:
 
 ```bash
@@ -78,11 +80,11 @@ A deck for `deck` is Markdown slides separated by `---` (Marp or Slidev), with e
 | Portuguese (Brazil) | Davi, Kauã, Manuela-Lu, Débora | Phonon 40M multilingual on the CPU |
 | French | Augustin, Coralie | Phonon 40M multilingual on the CPU |
 
-The first voice speaks by default; script speakers take the others in order. `tts-axi voices` lists all 64 catalog voices. The default speed is Phonon's `duration_delta` at `0.15`, a little slower than the model's own pace; `--speed` changes it.
+The first voice speaks by default; script speakers take the others in order. `tts-axi voices` lists all 64 catalog voices, and `just samples pt` (or `en`, `fr`) speaks one sentence in every voice of a language into a library episode with a chapter per voice, so you can pick by ear. The samples are made on your Mac; the repository keeps no audio. The default speed is Phonon's `duration_delta` at `0.15`, a little slower than the model's own pace; `--speed` changes it.
 
 ## Portuguese and French
 
-Portuguese and French use the gated [phonon-40m-multilingual](https://huggingface.co/gradium/phonon-40m-multilingual) model (CC BY-NC 4.0, non-commercial). It needs a Hugging Face token **once**, to download it. tts-axi pins the model to one revision, so after that every render reads it from the local cache and never asks for the token again: no sign-in prompt, no fingerprint per sound.
+English needs none of this section. Portuguese and French use the gated [phonon-40m-multilingual](https://huggingface.co/gradium/phonon-40m-multilingual) model (CC BY-NC 4.0, non-commercial). It needs a Hugging Face token **once**, to download it. tts-axi pins the model to one revision, so after that every render reads it from the local cache and never asks for the token again: no sign-in prompt, no fingerprint per sound.
 
 1. Create a free account at [huggingface.co/join](https://huggingface.co/join).
 2. Open [the model page](https://huggingface.co/gradium/phonon-40m-multilingual) and accept its terms.
@@ -104,6 +106,8 @@ Portuguese and French use the gated [phonon-40m-multilingual](https://huggingfac
    ```
 
 5. `tts-axi doctor` now shows `multilingual model: ok`. Try `tts-axi say "Bom dia" --lang pt`.
+
+The multilingual model itself speaks five languages: English, French, German, Portuguese (Brazil) and Spanish, and Phonon's catalog has 13 German and 25 Spanish voices. tts-axi uses it for Portuguese and French only for now, and keeps English on the smaller Neural Engine model; German and Spanish need only catalog and default-voice entries to be added.
 
 The token is only read by Hugging Face's own download tool; tts-axi never stores or prints it. With the model downloaded you can remove a saved token (`uvx --from huggingface_hub hf auth logout`) and French and Portuguese keep working.
 

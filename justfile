@@ -59,5 +59,24 @@ smoke:
     echo "memory after: $(sysctl -n kern.memorystatus_vm_pressure_level); swap $(sysctl -n vm.swapusage | awk '{print $6}')"
     echo "smoke ok; listen with: afplay '$audio'"
 
+# Speak a sample sentence in every catalog voice of a language (en, pt or fr) into one library episode, a chapter per voice.
+samples lang="en":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{lang}}" in
+      en) line="Hello, I'm NAME. Here is your briefing for today: three meetings, two invoices, and a little rain this afternoon." ;;
+      pt) line="Olá, eu sou NAME. Aqui está o seu resumo de hoje: três reuniões, duas faturas e um pouco de chuva à tarde." ;;
+      fr) line="Bonjour, je suis NAME. Voici votre programme du jour : trois réunions, deux factures et un peu de pluie cet après-midi." ;;
+      *) echo "samples: lang must be en, pt or fr"; exit 2 ;;
+    esac
+    script="$(mktemp -d)/voice-samples-{{lang}}.md"
+    printf -- '---\ntitle: Voice samples ({{lang}})\nlang: {{lang}}\n---\n' > "$script"
+    # Each voice's name is the first field of its row in the TOON table.
+    tts-axi voices --lang "{{lang}}" --format toon | sed -n 's/^  //p' | while IFS= read -r row; do
+      name="${row%%,*}"; name="${name//\"/}"
+      printf '## %s\n%s: %s\n\n' "$name" "$name" "${line//NAME/$name}" >> "$script"
+    done
+    tts-axi render "$script"
+
 # Full pre-merge validation: checks, install from this checkout, setup, a real spoken line.
 validate: check install setup doctor smoke
