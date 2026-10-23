@@ -174,7 +174,7 @@ Phonon's speed is a conditioning input. The Python runtime takes it per call; th
 
 ## Development
 
-See [AGENTS.md](AGENTS.md). `just check` runs what CI runs (vet, lint, tests); `just` lists every recipe. The tests need no model, network or Neural Engine: the helpers are faked.
+See [AGENTS.md](AGENTS.md). `just check` runs what CI runs (vet, lint, tests); `just` lists every recipe. Every pull request that changes the program adds a line to [CHANGELOG.md](CHANGELOG.md), and CI checks it. Releases are `just release <version>` (a pull request that bumps the version), then `just tag <version>` once it merges. The tests need no model, network or Neural Engine: the helpers are faked.
 
 ## Licence
 

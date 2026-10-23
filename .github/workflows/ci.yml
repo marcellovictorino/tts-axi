@@ -3,9 +3,20 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 permissions:
   contents: read
 jobs:
+  changelog:
+    # Every pull request that changes the program adds a CHANGELOG.md line.
+    # Label it no-changelog when nobody using tts-axi would notice.
+    if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no-changelog')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: scripts/changelog-check ${{ github.event.pull_request.base.sha }}
   test:
     runs-on: macos-latest
     steps:

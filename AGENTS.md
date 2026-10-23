@@ -16,7 +16,8 @@ Run `just check` (vet, golangci-lint, `go test ./...`) before every commit. `jus
 
 ## Rules
 
-- **Changelog:** every user-visible change adds a line under `## [Unreleased]` in `CHANGELOG.md` (Keep a Changelog). The version constant in `internal/version` and the top released section move together.
+- **Changelog:** every pull request that changes the program adds a line under `## [Unreleased]` in `CHANGELOG.md` (Keep a Changelog). CI's `changelog` job (`scripts/changelog-check`, also `just changelog-check`) fails without one; tests, docs and CI files alone need none, and the `no-changelog` label skips it for changes nobody using tts-axi would notice.
+- **Releases:** never bump the version in an ordinary pull request. `just release 0.2.0` makes a `release/v0.2.0` branch that moves Unreleased under the new version and bumps `internal/version`; after that pull request merges, `just tag 0.2.0` tags main and pushes the tag.
 - **Tests never touch the real home.** Use `t.TempDir()` with `HOME`, `TTS_AXI_HOME`, `TTS_AXI_LIBRARY` and `XDG_CONFIG_HOME` (see `newEnv` in `cmd/cmd_test.go`). The Swift helper and `uv` are faked by `internal/testutil` (test-binary re-exec); no test loads a model.
 - **Memory is a hard constraint.** Every helper run goes through `guard.Run`; never start a helper without it, never hold a model between renders, and keep the stops (critical pressure, any pressure rise, swap growth over 256 MiB a minute, one CPU retry, then fail without writing).
 - **Pinned downloads.** Release assets are pinned by size and SHA-256 in `internal/engine/assets.go`; a new runtime version updates all three together.

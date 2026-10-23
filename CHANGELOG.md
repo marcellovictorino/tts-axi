@@ -21,5 +21,6 @@ All notable changes to tts-axi are documented here. The format follows
 - The multilingual model is pinned to one revision and downloaded once by `tts-axi doctor --fix` with a Hugging Face token; renders then read it from the cache with no token. The README's "Portuguese and French" section walks through the account, the token, and keeping it in 1Password or the Keychain.
 - Shell completion for voices, languages, engines, formats and episode ids: `source <(tts-axi completion zsh)`.
 - `just samples <lang>` speaks one sentence in every catalog voice of en, pt or fr into one library episode, a chapter per voice.
+- Releases: `just release <version>` prepares a release pull request and `just tag <version>` tags it after the merge; CI fails a pull request that changes the program without a changelog line.
 - A justfile: `just check`, `just install`, `just setup`, `just smoke` (one real spoken line) and `just validate`.
 - `tts-axi voices`, `tts-axi doctor [--fix]`, `tts-axi skill install` (Claude Code, Codex and Pi) and `tts-axi version`.

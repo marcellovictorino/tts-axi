@@ -78,5 +78,44 @@ samples lang="en":
     done
     tts-axi render "$script"
 
+# Fail when program files changed since base without a CHANGELOG.md entry (CI runs this on every pull request).
+changelog-check base="origin/main":
+    scripts/changelog-check {{base}}
+
+# Prepare a release on a new branch: move Unreleased under the version, bump the version constant, commit. Then open a pull request.
+release version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    v="{{version}}"; v="${v#v}"
+    [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "release: give a version such as 0.2.0"; exit 2; }
+    [[ -z "$(git status --porcelain)" ]] || { echo "release: commit or stash your changes first"; exit 1; }
+    git fetch -q origin
+    # Check main's changelog before creating anything, so a refusal leaves no branch behind.
+    log="$(git show origin/main:CHANGELOG.md)"
+    grep -q "^## \[$v\]" <<<"$log" && { echo "release: CHANGELOG.md already has $v"; exit 1; }
+    # The lines between ## [Unreleased] and the next section must not be empty.
+    awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f&&NF{n++} END{exit n?0:1}' <<<"$log" || { echo "release: nothing under ## [Unreleased] in CHANGELOG.md on main"; exit 1; }
+    git switch -q -c "release/v$v" origin/main
+    awk -v v="$v" -v d="$(date +%Y-%m-%d)" '{print} /^## \[Unreleased\]/{print ""; print "## [" v "] - " d}' CHANGELOG.md > CHANGELOG.md.new && mv CHANGELOG.md.new CHANGELOG.md
+    sed -i '' -E "s/^const Version = \"[^\"]+\"/const Version = \"$v\"/" internal/version/version.go
+    grep -q "const Version = \"$v\"" internal/version/version.go || { echo "release: could not set the version constant"; exit 1; }
+    git commit -q -am "chore: release v$v"
+    echo "release: branch release/v$v is ready. Push it and open a pull request:"
+    echo "  git push -u origin release/v$v && gh pr create --fill"
+    echo "After it merges: just tag $v"
+
+# Tag a merged release on main and push the tag.
+tag version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    v="{{version}}"; v="${v#v}"
+    git fetch -q origin
+    got="$(git show origin/main:internal/version/version.go | sed -n -E 's/^const Version = "([^"]+)"/\1/p')"
+    [[ "$got" == "$v" ]] || { echo "tag: main is at version $got, not $v; merge the release pull request first"; exit 1; }
+    git show origin/main:CHANGELOG.md | grep -q "^## \[$v\]" || { echo "tag: CHANGELOG.md on main has no $v section"; exit 1; }
+    git tag -a "v$v" -m "tts-axi v$v" origin/main
+    git push origin "v$v"
+    echo "tagged v$v; install it with: go install github.com/marcellovictorino/tts-axi@v$v"
+
 # Full pre-merge validation: checks, install from this checkout, setup, a real spoken line.
 validate: check install setup doctor smoke

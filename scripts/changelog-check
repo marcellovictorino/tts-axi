@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Fail when a change touches the program but not CHANGELOG.md.
+# Usage: scripts/changelog-check [base-ref]   (default: origin/main)
+# Tests, test data, docs and CI files alone need no entry.
+set -euo pipefail
+base="${1:-origin/main}"
+changed="$(git diff --name-only "$base"...HEAD)"
+code="$(grep -E '^(main\.go|go\.mod|cmd/|internal/|skills/)' <<<"$changed" | grep -vE '(_test\.go$|/testdata/)' || true)"
+if [[ -z "$code" ]]; then
+  echo "changelog: no program files changed"
+  exit 0
+fi
+if grep -qx 'CHANGELOG.md' <<<"$changed"; then
+  echo "changelog: entry present"
+  exit 0
+fi
+echo "changelog: these files changed but CHANGELOG.md did not:"
+sed 's/^/  /' <<<"$code"
+echo "Add a line under ## [Unreleased] in CHANGELOG.md, or label the pull request no-changelog if nobody using tts-axi would notice."
+exit 1
