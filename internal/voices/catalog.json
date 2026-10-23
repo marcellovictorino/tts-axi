@@ -1,0 +1,322 @@
+[
+ {
+  "name": "Alfie",
+  "lang": "en",
+  "description": "Punchy and forward, with crisp consonant attack and a pitch that lifts across a line, sitting high over a music bed."
+ },
+ {
+  "name": "Azgorath",
+  "lang": "en",
+  "description": "An enormous ancient demon. A cavernous, impossibly deep bass voice that rumbles like stone grinding in a crypt, with a dry rasping edge and a faint hiss on every s. Calm, slow and amused, never shouting, every syllable set down deliberately, menace held under perfect control."
+ },
+ {
+  "name": "Bryony",
+  "lang": "en",
+  "description": "Full, rich mid-range tones, softly relaxed and spoken close to the mic, moving briskly with light pitch play."
+ },
+ {
+  "name": "Captain Silas Blackwater",
+  "lang": "en",
+  "description": "An old British pirate captain from the West Country, around sixty. Deep, gravelly and booming, rolling his Rs, salt-cracked from decades of shouting over gales. Roguish and hearty, with a wicked chuckle under every boast."
+ },
+ {
+  "name": "Delia",
+  "lang": "en",
+  "description": "Low, grounded and quick to the point, with a sincerity that keeps an apology honest."
+ },
+ {
+  "name": "Easton",
+  "lang": "en",
+  "description": "Punchy and close in, with crisp consonant attack that cuts through a music bed and pitch that lifts across each line."
+ },
+ {
+  "name": "Edwin",
+  "lang": "en",
+  "description": "Efficient and firm, sincere in attention, with tidy articulation that holds up at phone bandwidth."
+ },
+ {
+  "name": "Elodie-Rose",
+  "lang": "en",
+  "description": "A young British voice with sharp, enthusiastic energy and crisp articulation, sparky and to the point for customer support and care."
+ },
+ {
+  "name": "Everly",
+  "lang": "en",
+  "description": "Rounded, soft-edged tone with gentle lift at the end of phrases and an easy, relaxed delivery."
+ },
+ {
+  "name": "Fairy Godmother",
+  "lang": "en",
+  "description": "A kind fairy godmother, an older woman in her sixties. A low, warm, velvety alto voice, cosy and grandmotherly, unhurried and soothing, with a soft rich chuckle and a twinkle in every word. Gentle and reassuring, never high, never thin."
+ },
+ {
+  "name": "Fennick the Young Elf",
+  "lang": "en",
+  "description": "A curious, kind-hearted elf boy of about ten. A natural child's voice in a warm, soft middle range, never squeaky or shrill, earnest and wide-eyed, a little breathless with excitement, speaking quickly when amazed. Clean, close studio recording with no background noise or hiss."
+ },
+ {
+  "name": "Freya",
+  "lang": "en",
+  "description": "A young British voice, glossy and confident with fast, girly chatter and bubbly sparkle, perfect for a friendly receptionist or assistant."
+ },
+ {
+  "name": "Grub the Ogre",
+  "lang": "en",
+  "description": "A big, good-natured ogre who lives under a bridge. Gruff and grainy, rumbling low end, heavy chest resonance, slow lumbering rhythm with loose rounded words, and warm humour sitting just under the grumble."
+ },
+ {
+  "name": "Hadley",
+  "lang": "en",
+  "description": "Settled, even-toned and genuinely kind, with crisp consonants that hold up over a handset."
+ },
+ {
+  "name": "Harper",
+  "lang": "en",
+  "description": "Modern, confident and friendly voice with a standard American accent."
+ },
+ {
+  "name": "Hugh",
+  "lang": "en",
+  "description": "Soft and close, airy in texture, with lively pitch movement and an attentive, sincere delivery."
+ },
+ {
+  "name": "Imogen",
+  "lang": "en",
+  "description": "A bubbly, friendly British English adult voice that puts callers instantly at ease. Great for onboarding assistants and warm concierge interactions."
+ },
+ {
+  "name": "Juniper",
+  "lang": "en",
+  "description": "Cheerful presence with real resonance under it, personable when the copy turns intimate and decisive on the final line."
+ },
+ {
+  "name": "Lottie",
+  "lang": "en",
+  "description": "Sparky and to the point, high forward energy with clean edges on the consonants and the range to drop low for one line then climb back."
+ },
+ {
+  "name": "Maeve",
+  "lang": "en",
+  "description": "A sparky, attentive British English adult voice that gets to the point with a smile. Ideal for fast, efficient customer support and helpful voice assistants."
+ },
+ {
+  "name": "Master Aldric",
+  "lang": "en",
+  "description": "A wise old British wizard, around eighty. Rich and resonant with an aged grain, warm and kindly, deliberate pace with weighted pauses before the words that matter, able to rise into a ringing incantation."
+ },
+ {
+  "name": "Micah",
+  "lang": "en",
+  "description": "Buoyant and high in energy, with a playful lift at the ends of phrases and clean attack that survives a loud mix."
+ },
+ {
+  "name": "Miles",
+  "lang": "en",
+  "description": "Resonant and decisive, with genuine dynamic range, dropping right down for one clause then driving back up."
+ },
+ {
+  "name": "Morwenna of the Deep",
+  "lang": "en",
+  "description": "A sultry, seductive woman in her thirties. Low, husky alto, close to the microphone and almost whispered, slow and languid, purring, with a warm knowing smile in every word. Intimate, flirtatious and teasing, like a late-night torch singer luring someone closer, with a hint of danger underneath."
+ },
+ {
+  "name": "Old Mortlake",
+  "lang": "en",
+  "description": "An elderly gravedigger in a Victorian churchyard. Low, raspy and half whispered, melancholic, with heavy pauses that let every word settle like dirt on a coffin lid."
+ },
+ {
+  "name": "Pippa",
+  "lang": "en",
+  "description": "A confident, upbeat British English adult voice with infectious energy. Perfect for proactive assistants and motivating customer success calls."
+ },
+ {
+  "name": "Preston",
+  "lang": "en",
+  "description": "Trim, focused delivery with clean edges on every consonant and a steady, low-set core that carries through phone bandwidth."
+ },
+ {
+  "name": "Russell",
+  "lang": "en",
+  "description": "A high-energy American adult voice that pushes and encourages with the intensity of someone who genuinely believes in you."
+ },
+ {
+  "name": "Sir Bramwell",
+  "lang": "en",
+  "description": "A brave but pompous English knight, middle-aged. Booming, plummy and theatrical, full of puffed-up self-importance, rolling grand phrases, with a comic wobble of nerves showing through the bravado."
+ },
+ {
+  "name": "Spencer",
+  "lang": "en",
+  "description": "Light and airy, sitting a touch higher, with crisp consonants and a slow, patient delivery."
+ },
+ {
+  "name": "Teddy",
+  "lang": "en",
+  "description": "Sparky and close in, quick off the mark, with firm consonants and the range to drop right down for a clause then come back up."
+ },
+ {
+  "name": "The Snow Queen",
+  "lang": "en",
+  "description": "A regal, cold-hearted queen of ice. A cool, crystalline mezzo voice, poised and elegant, precise articulation, unhurried and quietly commanding, with an enigmatic chill and a faint smile that never warms."
+ },
+ {
+  "name": "The Thing Under the Stairs",
+  "lang": "en",
+  "description": "A monstrous creature lurking in the dark. Gravelly, breathy and pitched near the floor, a threatening growl that stays quiet to stay frightening, with a slow mocking sneer."
+ },
+ {
+  "name": "Toby",
+  "lang": "en",
+  "description": "A sparky, attentive British English adult voice that gets to the point with a smile. Ideal for fast, efficient customer support and helpful voice assistants."
+ },
+ {
+  "name": "Trevor",
+  "lang": "en",
+  "description": "Buoyant energy over a resonant mid-low core, phrases landing softly and consonants cutting through a handset."
+ },
+ {
+  "name": "Vyrmathrax the Ancient",
+  "lang": "en",
+  "description": "An ancient dragon, thousands of years old. Very low and resonant, deep chest weight with gravel at the bottom of the register, slow and controlled with long pauses, dry and offhand, with the flat calm of something far too old to be impressed."
+ },
+ {
+  "name": "Zoey",
+  "lang": "en",
+  "description": "Playful, upbeat and Gen Z energy voice with a standard American accent. Perfect for engaging conversations!"
+ },
+ {
+  "name": "Arnaud",
+  "lang": "fr",
+  "description": "Low and firm, quick to the point, consonants holding their shape at phone bandwidth."
+ },
+ {
+  "name": "Augustin",
+  "lang": "fr",
+  "description": "A curious, animated French adult voice that lights up when sharing an unexpected fact. Perfect for geeky explainers and trivia-driven dialogue."
+ },
+ {
+  "name": "Baptiste",
+  "lang": "fr",
+  "description": "Lively and expressive, with pitch that lifts and dips across a phrase and a playful edge to every line."
+ },
+ {
+  "name": "Coralie",
+  "lang": "fr",
+  "description": "A young Parisian voice, sweet and airy with fast, giggly girly charm, a bubbly assistant who makes every interaction feel light."
+ },
+ {
+  "name": "Hélène",
+  "lang": "fr",
+  "description": "Deep and resonant, carrying authority through steadiness rather than volume, with diction that survives raised playback speed."
+ },
+ {
+  "name": "Jules",
+  "lang": "fr",
+  "description": "A lively, expressive French adult voice that lights up around topics it loves. Great for animated recommendations and high-energy dialogue."
+ },
+ {
+  "name": "Lilou",
+  "lang": "fr",
+  "description": "A young Parisian voice, buoyant and tender with rippling laughter, a light-hearted support voice that smiles while it helps."
+ },
+ {
+  "name": "Lucien",
+  "lang": "fr",
+  "description": "Rounded and settled, phrases landing softly, with an apology that sounds genuinely meant and good news that sounds like good news."
+ },
+ {
+  "name": "Marius",
+  "lang": "fr",
+  "description": "An energetic, well-poised French adult voice with the confident assurance of a natural closer. Ideal for sales pitches and high-conviction content."
+ },
+ {
+  "name": "Maëlys",
+  "lang": "fr",
+  "description": "A young French voice, energetic and enthusiastic with a welcoming, upbeat delivery, sparky and to the point for responsive support."
+ },
+ {
+  "name": "Ninon",
+  "lang": "fr",
+  "description": "Pitch that moves across a sentence, a rounded mid tone and a sense of humour kept well in check."
+ },
+ {
+  "name": "Noémie",
+  "lang": "fr",
+  "description": "A young Parisian voice, warm and expressive with a quick playful pace and delicate high notes, a care specialist who stays bright and witty."
+ },
+ {
+  "name": "Orianne",
+  "lang": "fr",
+  "description": "Airy and higher-set, gently buoyant, with sincerity that holds through an apology."
+ },
+ {
+  "name": "Solène",
+  "lang": "fr",
+  "description": "A young French voice, bright and high-pitched, warm and enthusiastic at a lively pace, a receptionist who greets everyone with delight."
+ },
+ {
+  "name": "Tiphaine",
+  "lang": "fr",
+  "description": "Rounded, low-set tone with even phrasing and consonants that stay crisp through a handset."
+ },
+ {
+  "name": "Clarice",
+  "lang": "pt",
+  "description": "Quiet authority in a deep, resonant lower range, even in dynamics and firm at the end of every sentence."
+ },
+ {
+  "name": "Davi",
+  "lang": "pt",
+  "description": "A confident, upbeat Brazilian Portuguese adult voice with infectious energy. Perfect for proactive assistants and motivating customer success calls."
+ },
+ {
+  "name": "Débora",
+  "lang": "pt",
+  "description": "Low-set and resonant, with firm even phrasing and short decisive sentences."
+ },
+ {
+  "name": "Flávia",
+  "lang": "pt",
+  "description": "Compact, resonant timbre with crisp consonants and focused, forward phrasing."
+ },
+ {
+  "name": "Igor",
+  "lang": "pt",
+  "description": "Lifted and lively, pitch moving across a phrase, articulation quick and tidy."
+ },
+ {
+  "name": "Isadora",
+  "lang": "pt",
+  "description": "An upbeat young voice with a light girlish tone and warm bounce, quick and to the point, ideal for efficient, caring customer service."
+ },
+ {
+  "name": "Kauã",
+  "lang": "pt",
+  "description": "Sparky and close, with clean attack, brisk rhythm and a decisive push on the final clause that cuts over a loud music bed."
+ },
+ {
+  "name": "Manuela-Lu",
+  "lang": "pt",
+  "description": "A bright, sweet, chirpy young voice with breathless excitement and a constant smile, a warm receptionist who greets everyone like a friend."
+ },
+ {
+  "name": "Marcelo",
+  "lang": "pt",
+  "description": "Low and grounded, consonants firm, phrases short and sure of themselves."
+ },
+ {
+  "name": "Otávio",
+  "lang": "pt",
+  "description": "Low, chest-resonant and settled, with even dynamics and real pauses that hold a paragraph together."
+ },
+ {
+  "name": "Rafaela",
+  "lang": "pt",
+  "description": "A spirited young voice with bell-like clarity and joyful bounce, narrating like the best sleepover ever, a light, fun personal assistant."
+ },
+ {
+  "name": "Vitor",
+  "lang": "pt",
+  "description": "Lean and focused, with light pitch movement and a tidy rhythm that stays on point."
+ }
+]
