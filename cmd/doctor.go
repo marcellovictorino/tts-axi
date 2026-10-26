@@ -24,15 +24,11 @@ func newDoctorCmd(a *App) *cobra.Command {
 French and Portuguese route, memory, the library folder and the agent skill.
 
 --fix downloads Gradium's Phonon runtime (39 MB) and the English Core ML model
-(137 MB) into ~/.tts-axi, checks both against pinned checksums, builds the
-Swift helper with swiftc, prepares the default speed, and installs ptts for
-French and Portuguese with uv. It loads no model. Running it again is a no-op.
-
-With a Hugging Face token in HF_TOKEN (or saved by "hf auth login"), --fix
-also downloads the gated French and Portuguese model, once. Renders then read
-it from the cache and never need the token again:
-
-  HF_TOKEN="$(op read 'op://<vault>/<item>/<field>')" tts-axi doctor --fix`,
+(137 MB) into ~/.tts-axi, builds the Swift helper with swiftc, prepares the
+default speed, installs ptts for French and Portuguese with uv, and downloads
+the French and Portuguese model (122 MB) from Ollama's registry, with no
+account or token; Ollama itself is not needed. Every download is checked
+against a pinned checksum. It loads no model. Running it again is a no-op.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := a.load(); err != nil {
@@ -67,14 +63,8 @@ it from the cache and never need the token again:
 					}
 					return e.WarmPtts(ctx)
 				})
+				step("downloading the French and Portuguese model", func() error { return e.InstallMultilingual(ctx) })
 				step("creating the library", func() error { return a.library().Rebuild() })
-				// The gated model needs a token once; without one this step
-				// is skipped and the row below says how to give it.
-				if engine.HFSignedIn() && !engine.MultilingualCached() {
-					if _, err := exec.LookPath("uv"); err == nil {
-						step("downloading the French and Portuguese model", func() error { return e.InstallMultilingual(ctx) })
-					}
-				}
 			}
 
 			var rows []output.Obj
@@ -123,7 +113,7 @@ it from the cache and never need the token again:
 			} else {
 				add("french, portuguese", "warn", "uv is missing (brew install uv); English still works")
 			}
-			add(multilingualStatus())
+			add(multilingualStatus(e))
 			add(memoryStatus(a))
 			add(libraryStatus(a))
 			missing := missingSkillDirs()
@@ -166,17 +156,14 @@ func speedReady(e *engine.Engine, speed float64) (string, bool) {
 	return dir, err == nil
 }
 
-// multilingualStatus looks for the pinned gated model in the Hugging Face
-// cache and for a sign-in, without reading any token.
-func multilingualStatus() (string, string, string) {
+// multilingualStatus says whether the French and Portuguese model folder is
+// in place.
+func multilingualStatus(e *engine.Engine) (string, string, string) {
 	const name = "multilingual model"
-	switch {
-	case engine.MultilingualCached():
-		return name, "ok", "phonon-40m-multilingual is downloaded; French and Portuguese need no sign-in"
-	case engine.HFSignedIn():
-		return name, "warn", "not downloaded yet (75 MB): tts-axi doctor --fix downloads it with your Hugging Face token"
+	if e.MultilingualInstalled() {
+		return name, "ok", "phonon-40m-multilingual, downloaded from Ollama's registry"
 	}
-	return name, "warn", "not downloaded: it needs a Hugging Face token once, see \"Portuguese and French\" in the README; English works without it"
+	return name, "warn", "not downloaded (122 MB, no account needed): tts-axi doctor --fix; English works without it"
 }
 
 func memoryStatus(a *App) (string, string, string) {

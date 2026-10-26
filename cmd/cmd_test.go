@@ -29,10 +29,11 @@ func TestMain(m *testing.M) {
 // under one temp dir, so tests never touch the real ~/.tts-axi, ~/Music or
 // the agents' skill folders.
 type env struct {
-	t       *testing.T
-	dir     string
-	sampler *testutil.Sampler
-	now     time.Time
+	t        *testing.T
+	dir      string
+	sampler  *testutil.Sampler
+	now      time.Time
+	registry engine.Registry
 }
 
 func newEnv(t *testing.T) *env {
@@ -54,6 +55,7 @@ func newEnv(t *testing.T) *env {
 	t.Setenv("PI_CODING_AGENT_DIR", "")
 	t.Setenv("NO_COLOR", "1")
 	testutil.Install(t, filepath.Join(dir, "tts"))
+	e.registry = testutil.Registry(t)
 	return e
 }
 
@@ -68,7 +70,7 @@ func (e *env) run(args ...string) result {
 	e.t.Helper()
 	var out, errOut bytes.Buffer
 	deps := Deps{Out: &out, Err: &errOut, In: strings.NewReader("Bom dia a todos."), Sampler: e.sampler,
-		Limits: testutil.FastLimits, HTTP: http.DefaultClient, Now: func() time.Time { return e.now }}
+		Limits: testutil.FastLimits, HTTP: http.DefaultClient, Now: func() time.Time { return e.now }, Registry: e.registry}
 	code := Run(context.Background(), deps, args)
 	norm := func(s string) string { return strings.ReplaceAll(s, e.dir, "$TMP") }
 	return result{out: norm(out.String()), err: norm(errOut.String()), code: code}
@@ -411,32 +413,36 @@ func TestVoicesListsDefaultsFirst(t *testing.T) {
 	}
 }
 
-// Intent (owner request: grant permission once, not every time a sound is
-// made): without the gated model or a token, Portuguese fails with the way to
-// fix it; one doctor --fix with a token downloads the model; after that
-// Portuguese speaks with no token at all.
-func TestPortugueseNeedsTheTokenOnlyOnce(t *testing.T) {
+// Intent (owner request: download the Portuguese and French weights by the
+// Ollama pull route, without the Ollama engine, so users need no Hugging Face
+// account or key): without the model, Portuguese fails with the one command
+// that fixes it; doctor --fix downloads it with no token in the environment;
+// then Portuguese speaks from the downloaded folder.
+func TestPortugueseNeedsNoAccount(t *testing.T) {
 	e := newEnv(t)
-	t.Setenv("HF_HOME", t.TempDir()) // an empty cache, no token
+	t.Setenv("HF_TOKEN", "")
+	t.Setenv("HF_HOME", t.TempDir()) // no Hugging Face sign-in either
+	folder := filepath.Join(e.dir, "tts", "models", engine.MultilingualName)
+	if err := os.RemoveAll(folder); err != nil {
+		t.Fatal(err)
+	}
 	r := e.run("say", "Bom dia.", "--lang", "pt").fails(t, 1, "French and Portuguese model is not downloaded")
-	if !strings.Contains(r.out, "HF_TOKEN=<your token> tts-axi doctor --fix") || len(e.episodes()) != 0 {
+	if !strings.Contains(r.out, "tts-axi doctor --fix") || strings.Contains(r.out, "Hugging Face") || len(e.episodes()) != 0 {
 		t.Errorf("output:\n%s", r.out)
 	}
 	if r := e.run("doctor"); !strings.Contains(r.out, "multilingual model,warn,") {
 		t.Errorf("doctor:\n%s", r.out)
 	}
 
-	t.Setenv("HF_TOKEN", "hf_example")
 	e.run("doctor", "--fix").ok(t)
-	t.Setenv("HF_TOKEN", "")
 
 	if r := e.run("doctor"); !strings.Contains(r.out, "multilingual model,ok,") {
 		t.Errorf("doctor after the download:\n%s", r.out)
 	}
 	jobs := testutil.LogJobs(t)
 	e.run("say", "Bom dia.", "--lang", "pt").ok(t)
-	if j := jobs(); len(j) != 1 || j[0].Model != engine.MultilingualModel {
-		t.Errorf("want the pinned model, got %+v", j)
+	if j := jobs(); len(j) != 1 || j[0].Model != folder {
+		t.Errorf("want the downloaded folder, got %+v", j)
 	}
 }
 

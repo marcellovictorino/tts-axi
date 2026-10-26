@@ -1,7 +1,7 @@
 """tts-axi's multilingual helper: speaks a batch of lines with ptts on the CPU.
 
 Reads one JSON job on stdin:
-  {"model": "hf://...", "lang": "pt", "speed": 0.15,
+  {"model": "/path/to/model-folder", "lang": "pt", "speed": 0.15,
    "items": [{"text": "...", "voice": "Davi", "out": "/path/0001.wav"}]}
 and prints one JSON line per event on stdout, like the Swift helper.
 """

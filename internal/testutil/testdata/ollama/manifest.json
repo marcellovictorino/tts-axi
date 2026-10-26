@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+  "config": {
+    "mediaType": "application/vnd.docker.container.image.v1+json",
+    "digest": "sha256:6dea9a6341f5e24bdebd85d28f8cc777ad70c20fe03d71150b86c286ab7b2850",
+    "size": 190
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.ollama.image.tensor",
+      "digest": "sha256:38c5c91d25edfb65b9804ebc5073f8a4409b5675febab391fad95985812dd8ca",
+      "size": 144,
+      "name": "flow_lm.bos_emb"
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.tensor",
+      "digest": "sha256:abddbf463ea47285a4c3020e04af1dba716cb6f9ebdc709b0b405714bb917d94",
+      "size": 1168,
+      "name": "flow_lm.condition_provider.conditioners.duration_delta.learnt_padding"
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.tensor",
+      "digest": "sha256:bea8223a5effa8ece66e69984e6d7e9e99ebdbb06465afd95917da10e0d99cb7",
+      "size": 144,
+      "name": "flow_lm.emb_mean"
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.tensor",
+      "digest": "sha256:ec7c518bcac7224bc0c34ca7cec4f1c630f00003b3258ca212d4890c8b48f9bf",
+      "size": 90,
+      "name": "flow_lm.out_eos.bias"
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.tensor",
+      "digest": "sha256:7fc447048a48db3c5a4cf57b87935a7cf3a1c4107532176d00799b0f70957f5b",
+      "size": 100,
+      "name": "mimi.decoder.model.11.conv.bias"
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.tensor",
+      "digest": "sha256:686c3cd4779d7141e06f37b210f14f3deaeb98e68f98b7484355fb059308d435",
+      "size": 256088,
+      "name": "voices.Davi"
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.tensor",
+      "digest": "sha256:605208a11cf4f6461ed8ea3e0f25ef99e0e0be0f51758f58b6d632de4146e0c6",
+      "size": 256088,
+      "name": "voices.default"
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.json",
+      "digest": "sha256:e312ab694d5ec1f79ccea520a2eeec989969ce07e9b4189ae7e9ad8e035ef82e",
+      "size": 4674,
+      "name": "config.json"
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.json",
+      "digest": "sha256:ffb086e8f531b10a43bfd17a56069f90b649171a55aae98b5e9a28c8411cffc0",
+      "size": 220,
+      "name": "generation_config.json"
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.json",
+      "digest": "sha256:a5e8c6060bf927ed367314f21355148fdf4acff6fadb94e49c86bc7182449433",
+      "size": 277749,
+      "name": "tokenizer.json"
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.license",
+      "digest": "sha256:984d0d8290418559f125b5bfb503082abe5f185f322ad80f3da9245034b2e441",
+      "size": 19619
+    },
+    {
+      "mediaType": "application/vnd.ollama.image.license",
+      "digest": "sha256:79d95136ba8e76fd0ec048ba313e4182413ffe040aa896c5e6ea741263059273",
+      "size": 11487
+    }
+  ],
+  "runner": "mlx",
+  "format": "safetensors"
+}

@@ -197,72 +197,6 @@ func (e *Engine) PttsArgs(script string) []string {
 		"--with", "ptts==" + PttsVersion, "python", "-I", script}
 }
 
-// hfHubCache is the Hugging Face cache folder, as huggingface_hub and ptts
-// resolve it.
-func hfHubCache() string {
-	if v := os.Getenv("HF_HUB_CACHE"); v != "" {
-		return v
-	}
-	if v := os.Getenv("HF_HOME"); v != "" {
-		return filepath.Join(v, "hub")
-	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".cache", "huggingface", "hub")
-}
-
-// MultilingualCached reports whether the pinned multilingual model is in the
-// Hugging Face cache, so French and Portuguese work with no sign-in.
-func MultilingualCached() bool {
-	snap := filepath.Join(hfHubCache(), "models--"+strings.ReplaceAll(MultilingualRepo, "/", "--"), "snapshots", MultilingualRevision)
-	for _, f := range multilingualFiles {
-		if _, err := os.Stat(filepath.Join(snap, f)); err != nil {
-			return false
-		}
-	}
-	return true
-}
-
-// HFSignedIn reports whether a Hugging Face token is available: HF_TOKEN in
-// the environment, or the file `hf auth login` writes. The token is never read.
-func HFSignedIn() bool {
-	if os.Getenv("HF_TOKEN") != "" {
-		return true
-	}
-	home := os.Getenv("HF_HOME")
-	if home == "" {
-		h, _ := os.UserHomeDir()
-		home = filepath.Join(h, ".cache", "huggingface")
-	}
-	_, err := os.Stat(filepath.Join(home, "token"))
-	return err == nil
-}
-
-// InstallMultilingual downloads the pinned multilingual model (about 75 MB)
-// into the Hugging Face cache with the hf command, using whatever token the
-// environment holds. It loads no model.
-func (e *Engine) InstallMultilingual(ctx context.Context) error {
-	if MultilingualCached() {
-		return nil
-	}
-	args := append([]string{"tool", "run", "--quiet", "--from", "huggingface_hub", "hf", "download", MultilingualRepo},
-		multilingualFiles...)
-	args = append(args, "--revision", MultilingualRevision)
-	var stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, e.uv(), args...)
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		msg := firstLines(stderr.String(), 3)
-		if strings.Contains(msg, "401") || strings.Contains(msg, "403") || strings.Contains(strings.ToLower(msg), "gated") {
-			msg = "Hugging Face refused the download: accept the model's terms at huggingface.co/" + MultilingualRepo + " with the account the token belongs to (" + msg + ")"
-		}
-		return fmt.Errorf("downloading the French and Portuguese model failed: %s", msg)
-	}
-	if !MultilingualCached() {
-		return fmt.Errorf("the French and Portuguese model download finished, but its files are not in %s", hfHubCache())
-	}
-	return nil
-}
-
 // WarmPtts makes uv fetch ptts now, so the first French or Portuguese render
 // does not wait for it. No model is loaded.
 func (e *Engine) WarmPtts(ctx context.Context) error {
@@ -286,7 +220,7 @@ func (e *Engine) fetchAndUnzip(ctx context.Context, a asset, dest string) error 
 	if e.Progress != nil {
 		e.Progress("downloading %s (%.0f MB)", a.Name, float64(a.Size)/1e6)
 	}
-	if err := e.download(ctx, e.releaseURL(a.Name), zipPath, a); err != nil {
+	if err := e.download(ctx, e.releaseURL(a.Name), zipPath, a, ""); err != nil {
 		return fmt.Errorf("downloading %s: %w", a.Name, err)
 	}
 	return unzip(zipPath, dest)
@@ -299,10 +233,15 @@ func (e *Engine) releaseURL(name string) string {
 	return releaseURL(name)
 }
 
-func (e *Engine) download(ctx context.Context, url, dest string, a asset) error {
+// download fetches url into dest and checks it against the asset's size and
+// SHA-256; accept, when set, is the Accept header.
+func (e *Engine) download(ctx context.Context, url, dest string, a asset, accept string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
+	}
+	if accept != "" {
+		req.Header.Set("Accept", accept)
 	}
 	resp, err := e.HTTP.Do(req)
 	if err != nil {

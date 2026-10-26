@@ -151,8 +151,7 @@ func speakError(err error) error {
 	switch {
 	case engine.IsMissing(err) && strings.Contains(err.Error(), "French and Portuguese"):
 		return output.Fail([]string{
-			"accept the terms at huggingface.co/" + engine.MultilingualRepo + ", then run once: HF_TOKEN=<your token> tts-axi doctor --fix",
-			"see \"Portuguese and French\" in the README for keeping the token in 1Password or the Keychain",
+			"run `tts-axi doctor --fix` once: it downloads the French and Portuguese model (122 MB) with no account or token",
 			"nothing was written",
 		}, "%v", err)
 	case engine.IsMissing(err):
@@ -160,12 +159,7 @@ func speakError(err error) error {
 	case guard.IsStop(err):
 		return output.Fail([]string{"close memory-hungry apps or unload local models, then try again", "nothing was written"}, "%v", err)
 	}
-	msg := err.Error()
-	help := []string{"nothing was written", "run `tts-axi doctor` to check the installation"}
-	if strings.Contains(msg, "401") || strings.Contains(msg, "403") || strings.Contains(strings.ToLower(msg), "gated") || strings.Contains(strings.ToLower(msg), "token") {
-		help = append([]string{"French and Portuguese need the gated phonon-40m-multilingual model: accept its terms on Hugging Face, then run once: HF_TOKEN=<your token> tts-axi doctor --fix"}, help...)
-	}
-	return output.Fail(help, "speaking failed: %s", msg)
+	return output.Fail([]string{"nothing was written", "run `tts-axi doctor` to check the installation"}, "speaking failed: %s", err)
 }
 
 // timeline places the lines one after another with the gaps between them,
