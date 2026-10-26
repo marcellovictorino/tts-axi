@@ -25,13 +25,14 @@ Apple silicon, macOS 15 or later.
 
 ```bash
 go install github.com/marcellovictorino/tts-axi@latest
-tts-axi doctor --fix      # downloads the runtime (39 MB) and English model (137 MB), builds the helper
+tts-axi doctor --fix      # downloads the runtime (39 MB), the English model (137 MB) and the
+                          # Portuguese and French model (122 MB), builds the helper
 tts-axi skill install     # teaches Claude Code, Codex and Pi to use it
 ```
 
 `doctor --fix` checks every download against a pinned SHA-256, and loads no model. Running it again is a no-op.
 
-That is all English needs: no account and no token. Only Portuguese and French need the one-time Hugging Face step in [Portuguese and French](#portuguese-and-french).
+No language needs an account, a sign-in or a token.
 
 From a checkout, [just](https://github.com/casey/just) (`brew install just`) runs the same steps:
 
@@ -84,32 +85,17 @@ The first voice speaks by default; script speakers take the others in order. `tt
 
 ## Portuguese and French
 
-English needs none of this section. Portuguese and French use the gated [phonon-40m-multilingual](https://huggingface.co/gradium/phonon-40m-multilingual) model (CC BY-NC 4.0, non-commercial). It needs a Hugging Face token **once**, to download it. tts-axi pins the model to one revision, so after that every render reads it from the local cache and never asks for the token again: no sign-in prompt, no fingerprint per sound.
+Portuguese and French use Gradium's [phonon-40m-multilingual](https://huggingface.co/gradium/phonon-40m-multilingual) model (CC BY-NC 4.0, non-commercial) through ptts, Gradium's Python runtime, on the CPU. `tts-axi doctor --fix` downloads it once, with nothing to set up: `tts-axi doctor` then shows `multilingual model: ok`. Try `tts-axi say "Bom dia" --lang pt`.
 
-1. Create a free account at [huggingface.co/join](https://huggingface.co/join).
-2. Open [the model page](https://huggingface.co/gradium/phonon-40m-multilingual) and accept its terms.
-3. Create a token at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens): type **Read** is enough. A fine-grained token needs "Read access to contents of all public gated repos you can access".
-4. Give the token to one `tts-axi doctor --fix` run, in whichever way suits you:
+**Where the model comes from.** Gradium gates the model on Hugging Face, which needs an account, accepting its terms and a token. [Ollama](https://ollama.com/library/phonon) publishes the same weights as `phonon:40m-multilingual` with no sign-in, so tts-axi downloads them from Ollama's registry instead, the way `ollama pull` does. Ollama itself is not installed or run: tts-axi keeps its own runtime, its speed setting and its memory guard. We chose this to make setup easier: no Hugging Face account or key, and the same model.
 
-   ```bash
-   # 1Password: one Touch ID, once
-   HF_TOKEN="$(op read 'op://<vault>/<item>/<field>')" tts-axi doctor --fix
+- **Same model.** Ollama's copy names Hugging Face revision `1537ce4` as its source. Its config and tokenizer are byte-identical to Gradium's, every model tensor matches by name and shape, and the default voice tts-axi builds from it is byte-identical to Gradium's file. Ollama ships the weights mostly in 16-bit, and ptts quantizes them to 8-bit on load, as it did with Gradium's 8-bit file; clips from both copies have the same length to the sample.
+- **Pinned.** tts-axi pins the manifest by size and SHA-256, and the manifest names every file by its SHA-256, so a changed or tampered file is refused.
+- **Undocumented address.** Ollama does not document its registry address (`registry.ollama.ai/v2/library/phonon/...`). If Ollama moves or removes it, `doctor --fix` fails with the address it tried; a model already downloaded keeps working.
 
-   # macOS Keychain: store it once (you are prompted for it, so it stays out of your shell history) ...
-   security add-generic-password -a "$USER" -s huggingface-token -w
-   # ... then use it once
-   HF_TOKEN="$(security find-generic-password -a "$USER" -s huggingface-token -w)" tts-axi doctor --fix
-
-   # Or Hugging Face's own sign-in, which saves the token in ~/.cache/huggingface/token
-   uvx --from huggingface_hub hf auth login
-   tts-axi doctor --fix
-   ```
-
-5. `tts-axi doctor` now shows `multilingual model: ok`. Try `tts-axi say "Bom dia" --lang pt`.
+`doctor --fix` merges Ollama's tensor files into `~/.tts-axi/models/phonon-40m-multilingual/`: `model.safetensors`, `default-voice.safetensors`, `config.json`, `tokenizer.json` and `LICENSE`. The voices come from Gradium's catalog, [phonon-voices](https://huggingface.co/gradium/phonon-voices), which is not gated. `TTS_AXI_MULTILINGUAL_MODEL` points tts-axi at another ptts model folder instead.
 
 The multilingual model itself speaks five languages: English, French, German, Portuguese (Brazil) and Spanish, and Phonon's catalog has 13 German and 25 Spanish voices. tts-axi uses it for Portuguese and French only for now, and keeps English on the smaller Neural Engine model; German and Spanish need only catalog and default-voice entries to be added.
-
-The token is only read by Hugging Face's own download tool; tts-axi never stores or prints it. With the model downloaded you can remove a saved token (`uvx --from huggingface_hub hf auth logout`) and French and Portuguese keep working.
 
 ## Memory
 
@@ -156,7 +142,7 @@ library = "~/Music/tts-axi"
 en = ["Hugh", "Bryony"]          # default voice order per language
 ```
 
-Environment overrides: `TTS_AXI_HOME` (runtime, helper and models, default `~/.tts-axi`), `TTS_AXI_LIBRARY`, `TTS_AXI_BASE_URL`.
+Environment overrides: `TTS_AXI_HOME` (runtime, helper and models, default `~/.tts-axi`), `TTS_AXI_LIBRARY`, `TTS_AXI_BASE_URL`, `TTS_AXI_MULTILINGUAL_MODEL` (another ptts model folder for Portuguese and French).
 
 ## How it works
 
@@ -165,8 +151,11 @@ tts-axi (Go)                        flags, scripts, voices, lock, memory guard,
   │                                  ffmpeg joins, library page and feed
   ├── tts-axi-helper (Swift)        English: Phonon 31M through Gradium's Core ML
   │                                  runtime, Neural Engine or CPU
-  └── uv run ptts (Python)          Portuguese, French: Phonon 40M multilingual, CPU
+  └── uv run ptts (Python)          Portuguese, French: Phonon 40M multilingual, CPU,
+                                     weights from Ollama's registry
 ```
+
+`doctor --fix` fetches everything a render needs ahead of time: Gradium's runtime and English Core ML bundle from its GitHub release, and the multilingual weights from Ollama's registry, merged into one folder ptts loads. Each download is pinned by SHA-256.
 
 Each helper reads a batch of lines as JSON, loads the model once, writes one WAV per line and exits. tts-axi trims each clip, inserts the gaps and pauses as real silence, and joins everything with ffmpeg, writing chapter marks into the file.
 

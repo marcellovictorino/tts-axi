@@ -11,3 +11,9 @@ own export rather than against numbers typed by hand.
   `host.safetensors` in the `phonon-31m-en-coreml.zip` bundle of the
   `gradium-ai/xn-ptts` v0.4.0 release, exported from that revision at
   duration_delta 0.
+- `ollama/`: a real subset of Ollama's `phonon:40m-multilingual` (CC BY-NC 4.0
+  for the model, Apache-2.0 for the voices). `manifest.json` is the manifest
+  from `registry.ollama.ai/v2/library/phonon/manifests/40m-multilingual` cut
+  down to five tensor layers (BF16 and F32), the `voices.Davi` and
+  `voices.default` tensors, the three JSON layers and both licence layers;
+  `blobs/` holds those layers' blobs, named by their SHA-256.

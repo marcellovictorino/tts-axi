@@ -55,12 +55,13 @@ type Engine struct {
 	Sampler guard.Sampler
 	Limits  guard.Limits
 
-	Swiftc        string // swiftc, to build the helper
-	Uv            string // uv, to run the multilingual helper
-	ReleaseBase   string // tests: where release assets are served from
-	CheckpointURL string // tests: where the checkpoint is served from
-	// MultilingualModel overrides the French and Portuguese model, for
-	// example to try the route with the ungated English checkpoint.
+	Swiftc        string   // swiftc, to build the helper
+	Uv            string   // uv, to run the multilingual helper
+	ReleaseBase   string   // tests: where release assets are served from
+	CheckpointURL string   // tests: where the checkpoint is served from
+	Registry      Registry // tests: where the multilingual model is served from
+	// MultilingualModel overrides the French and Portuguese model folder, for
+	// example to try the route with another ptts model.
 	MultilingualModel string
 
 	Progress func(format string, a ...any) // optional status lines for a person
@@ -70,7 +71,7 @@ func (e *Engine) swiftc() string { return orDefault(e.Swiftc, "swiftc") }
 func (e *Engine) uv() string     { return orDefault(e.Uv, "uv") }
 
 func (e *Engine) multilingualModel() string {
-	return orDefault(e.MultilingualModel, MultilingualModel)
+	return orDefault(e.MultilingualModel, e.MultilingualDir())
 }
 
 func orDefault(v, def string) string {
@@ -216,8 +217,8 @@ func (e *Engine) attempt(ctx context.Context, job Job, route Route, base guard.S
 		name = e.Paths.HelperBin()
 		input = map[string]any{"model": dir, "unit": unit, "lang": job.Lang, "items": job.Items}
 	case PttsCPU:
-		if e.MultilingualModel == "" && !MultilingualCached() && !HFSignedIn() {
-			return 0, errMissing("the French and Portuguese model is not downloaded, and it needs a Hugging Face token once")
+		if e.MultilingualModel == "" && !e.MultilingualInstalled() {
+			return 0, errMissing("the French and Portuguese model is not downloaded")
 		}
 		script, err := e.WritePttsHelper()
 		if err != nil {

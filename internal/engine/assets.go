@@ -39,19 +39,25 @@ const BundleName = "phonon-31m-en-coreml"
 // duration_delta conditioner is read from here to set the speed.
 const Checkpoint = "https://huggingface.co/gradium/phonon-31m-en/resolve/8acf8881a96315724c72ed3aad2a0900d1b230ba/model.safetensors"
 
-// The multilingual model speaks French and Portuguese through ptts on the
-// CPU. It is gated on Hugging Face, so it is pinned to one revision: once its
-// files are in the Hugging Face cache, ptts reads a pinned revision from the
-// cache even when the Hub refuses the request, so renders never need the
-// token again. Only the download does.
+// The multilingual model, phonon-40m-multilingual (CC BY-NC 4.0), speaks
+// French and Portuguese through ptts on the CPU. Gradium gates it on Hugging
+// Face, which needs an account and a token to download it; Ollama's registry
+// serves the same weights with no sign-in, so tts-axi downloads them from
+// there and runs them with its own runtime. Ollama itself is not needed.
+//
+// Ollama does not document this address: it is the Docker registry API that
+// `ollama pull phonon:40m-multilingual` reads. The manifest is pinned by size
+// and SHA-256, and it names every blob by its SHA-256, so each blob is pinned
+// too. Its licence layer names Hugging Face revision 1537ce4 as the source.
 const (
-	MultilingualRepo     = "gradium/phonon-40m-multilingual"
-	MultilingualRevision = "a411985d04262e21e306e505bd59d8fe30bd486b"
-	MultilingualModel    = "hf://" + MultilingualRepo + "@" + MultilingualRevision
+	OllamaRegistry   = "https://registry.ollama.ai"
+	OllamaRepository = "library/phonon"
+	OllamaTag        = "40m-multilingual"
+	// MultilingualName is the model folder's name under ~/.tts-axi/models.
+	MultilingualName = "phonon-40m-multilingual"
 )
 
-// multilingualFiles are the files ptts reads for the q8 model.
-var multilingualFiles = []string{"config.json", "tokenizer.json", "model.q8.gguf", "default-voice.safetensors"}
+var multilingualManifest = Pin{Size: 61135, SHA256: "4b69007b5c7924e61f53312b4cfe7f133fd3f1a4fcf50632409d33adf7968048"}
 
 // PttsVersion is the Python runtime uv installs for the multilingual route.
 const PttsVersion = "0.4.1"

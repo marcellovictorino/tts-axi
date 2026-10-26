@@ -28,10 +28,11 @@ func newEngine(t *testing.T, s guard.Sampler) *engine.Engine {
 	home := t.TempDir()
 	testutil.Install(t, home)
 	return &engine.Engine{
-		Paths:   config.Paths{Home: home, Library: t.TempDir()},
-		HTTP:    http.DefaultClient,
-		Sampler: s,
-		Limits:  testutil.FastLimits,
+		Paths:    config.Paths{Home: home, Library: t.TempDir()},
+		HTTP:     http.DefaultClient,
+		Sampler:  s,
+		Limits:   testutil.FastLimits,
+		Registry: testutil.Registry(t),
 	}
 }
 
@@ -195,7 +196,7 @@ func TestPortugueseGoesToPtts(t *testing.T) {
 	if out.Route != engine.PttsCPU || len(got) != 1 || got[0].Helper != "uv" {
 		t.Fatalf("route %s, jobs %+v", out.Route, got)
 	}
-	if got[0].Model != engine.MultilingualModel || got[0].Lang != "pt" || got[0].Speed == nil || *got[0].Speed != 0.15 || got[0].Items[0].Voice != "Davi" {
+	if got[0].Model != e.MultilingualDir() || got[0].Lang != "pt" || got[0].Speed == nil || *got[0].Speed != 0.15 || got[0].Items[0].Voice != "Davi" {
 		t.Errorf("job %+v", got[0])
 	}
 }

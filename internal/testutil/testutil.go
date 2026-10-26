@@ -8,14 +8,17 @@
 package testutil
 
 import (
-	_ "embed"
+	"crypto/sha256"
+	"embed"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math"
+	"net/http"
+	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -23,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/marcellovictorino/tts-axi/internal/config"
 	"github.com/marcellovictorino/tts-axi/internal/engine"
 	"github.com/marcellovictorino/tts-axi/internal/guard"
 )
@@ -33,6 +37,10 @@ var (
 	Conditioners []byte
 	//go:embed testdata/host-conditions.safetensors
 	HostConditions []byte
+	// ollama is a real subset of Ollama's phonon:40m-multilingual: its
+	// manifest cut down to a few layers, and those layers' blobs.
+	//go:embed testdata/ollama
+	ollama embed.FS
 )
 
 // Environment variables that steer the fakes.
@@ -48,9 +56,6 @@ const (
 func MaybeRunFake() {
 	switch filepath.Base(os.Args[0]) {
 	case "uv":
-		if slices.Contains(os.Args, "download") {
-			os.Exit(fakeHFDownload())
-		}
 		if slices.Contains(os.Args, "-c") {
 			os.Exit(0) // `uv run ... python -c "import ptts"`: ptts is "installed"
 		}
@@ -108,49 +113,66 @@ func fakeHelper() int {
 	return 0
 }
 
-// fakeHFDownload stands in for `uv tool run --from huggingface_hub hf
-// download <repo> <files...> --revision <rev>`: with a token it writes the
-// files into the cache layout huggingface_hub uses; without one it fails as
-// the Hub does for a gated model.
-func fakeHFDownload() int {
-	if os.Getenv("HF_TOKEN") == "" {
-		fmt.Fprintln(os.Stderr, "401 Client Error: gated repo, access restricted")
-		return 1
+// Registry serves the fixture subset of phonon:40m-multilingual the way
+// Ollama's registry does: the manifest only to a client that asks for the
+// Docker manifest format, and each blob through a redirect to storage. Its pin
+// is the fixture manifest's own size and SHA-256.
+func Registry(t *testing.T) engine.Registry {
+	t.Helper()
+	manifest, err := ollama.ReadFile("testdata/ollama/manifest.json")
+	if err != nil {
+		t.Fatal(err)
 	}
-	args := os.Args[slices.Index(os.Args, "download")+1:]
-	repo, rev := args[0], ""
-	var files []string
-	for i := 1; i < len(args); i++ {
-		if args[i] == "--revision" {
-			rev = args[i+1]
-			i++
-			continue
+	prefix := "/v2/" + engine.OllamaRepository
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET "+prefix+"/manifests/"+engine.OllamaTag, func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept") != "application/vnd.docker.distribution.manifest.v2+json" {
+			http.Error(w, "unsupported manifest type", http.StatusNotFound)
+			return
 		}
-		files = append(files, args[i])
-	}
-	snap := filepath.Join(os.Getenv("HF_HOME"), "hub", "models--"+strings.ReplaceAll(repo, "/", "--"), "snapshots", rev)
-	if err := os.MkdirAll(snap, 0o755); err != nil {
-		return 1
-	}
-	for _, f := range files {
-		if err := os.WriteFile(filepath.Join(snap, f), []byte("fake "+f), 0o644); err != nil {
-			return 1
+		_, _ = w.Write(manifest)
+	})
+	mux.HandleFunc("GET "+prefix+"/blobs/{digest}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/storage/"+strings.TrimPrefix(r.PathValue("digest"), "sha256:"), http.StatusTemporaryRedirect)
+	})
+	mux.HandleFunc("GET /storage/{hex}", func(w http.ResponseWriter, r *http.Request) {
+		b, err := ollama.ReadFile("testdata/ollama/blobs/" + r.PathValue("hex"))
+		if err != nil {
+			http.NotFound(w, r)
+			return
 		}
-	}
-	return 0
+		_, _ = w.Write(b)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	sum := sha256.Sum256(manifest)
+	return engine.Registry{Base: srv.URL, Manifest: engine.Pin{Size: int64(len(manifest)), SHA256: hex.EncodeToString(sum[:])}}
 }
 
-// CacheMultilingual puts the pinned multilingual model's files in the
-// Hugging Face cache under HF_HOME, as a finished download leaves them.
-func CacheMultilingual(t *testing.T) {
+// OllamaBlob is one blob of the fixture, by its manifest layer name.
+func OllamaBlob(t *testing.T, name string) []byte {
 	t.Helper()
-	t.Setenv("HF_TOKEN", "test-token")
-	cmd := exec.Command(filepath.Join(os.Getenv("TTS_AXI_FAKE_BIN"), "uv"), "tool", "run", "--from", "huggingface_hub", "hf", "download",
-		engine.MultilingualRepo, "config.json", "tokenizer.json", "model.q8.gguf", "default-voice.safetensors", "--revision", engine.MultilingualRevision)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("caching the model: %v %s", err, out)
+	manifest, err := ollama.ReadFile("testdata/ollama/manifest.json")
+	if err != nil {
+		t.Fatal(err)
 	}
-	t.Setenv("HF_TOKEN", "")
+	var m struct {
+		Layers []struct{ Digest, Name string } `json:"layers"`
+	}
+	if err := json.Unmarshal(manifest, &m); err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range m.Layers {
+		if l.Name == name {
+			b, err := ollama.ReadFile("testdata/ollama/blobs/" + strings.TrimPrefix(l.Digest, "sha256:"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			return b
+		}
+	}
+	t.Fatalf("no layer %s in the fixture", name)
+	return nil
 }
 
 func emit(v map[string]any) {
@@ -193,9 +215,10 @@ func SpeechWAV(text string) []byte {
 
 // Install makes a complete fake installation under home: the helper (the
 // test binary under the helper's name, marked as built from the current
-// source), an English bundle carrying the real conditions vector, and the
-// cached real duration_delta weights, so every speed works offline. It also
-// puts a fake uv first on PATH.
+// source), an English bundle carrying the real conditions vector, the cached
+// real duration_delta weights, so every speed works offline, and the
+// multilingual model folder built from the fixture registry. It also puts a
+// fake uv first on PATH.
 func Install(t *testing.T, home string) {
 	t.Helper()
 	exe, err := os.Executable()
@@ -226,11 +249,8 @@ func Install(t *testing.T, home string) {
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("TTS_AXI_FAKE_BIN", bin)
 
-	// A Hugging Face cache of its own, with the multilingual model in it, and
-	// no token: the state after a one-time download.
-	t.Setenv("HF_HOME", t.TempDir())
-	t.Setenv("HF_HUB_CACHE", "")
-	CacheMultilingual(t)
+	e := engine.Engine{Paths: config.Paths{Home: home}, HTTP: http.DefaultClient, Registry: Registry(t)}
+	must(t, e.InstallMultilingual(t.Context()))
 }
 
 // FakeEnv steers the fakes for one test.

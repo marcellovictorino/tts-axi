@@ -28,7 +28,8 @@ import (
 )
 
 // Deps are the things tests replace: streams, the terminal check, the memory
-// sampler and its limits, the HTTP client and the clock.
+// sampler and its limits, the HTTP client, the clock, and the registry the
+// multilingual model comes from.
 type Deps struct {
 	Out, Err  io.Writer
 	In        io.Reader // stdin, read when the text argument is "-"
@@ -37,6 +38,7 @@ type Deps struct {
 	Limits    guard.Limits
 	HTTP      *http.Client
 	Now       func() time.Time
+	Registry  engine.Registry // zero: Ollama's registry and the pinned manifest
 }
 
 // App is the state shared by all commands. Paths and settings load lazily so
@@ -85,6 +87,7 @@ func (a *App) engine() *engine.Engine {
 		HTTP:              a.deps.HTTP,
 		Sampler:           a.deps.Sampler,
 		Limits:            a.deps.Limits,
+		Registry:          a.deps.Registry,
 		MultilingualModel: os.Getenv("TTS_AXI_MULTILINGUAL_MODEL"),
 		Progress:          a.printer.Progress,
 	}

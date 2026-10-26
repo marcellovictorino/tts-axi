@@ -6,6 +6,10 @@ All notable changes to tts-axi are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Portuguese and French no longer need a Hugging Face account or token. `tts-axi doctor --fix` downloads the same phonon-40m-multilingual weights from Ollama's registry (`phonon:40m-multilingual`, 122 MB, pinned by SHA-256) with no sign-in, and merges them into `~/.tts-axi/models/phonon-40m-multilingual`, which ptts loads. Ollama itself is not needed. Run `tts-axi doctor --fix` once after upgrading; the old copy in the Hugging Face cache (`~/.cache/huggingface/hub/models--gradium--phonon-40m-multilingual`) is no longer used and can be deleted.
+
 ## [0.1.0] - 2026-10-21
 
 ### Added
