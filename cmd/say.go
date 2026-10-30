@@ -70,7 +70,7 @@ French).
 			var v voices.Voice
 			if voice != "" {
 				var ok bool
-				if v, ok = voices.Find(voice); !ok {
+				if v, ok = a.voices.Find(voice); !ok {
 					return output.Usage([]string{"run `tts-axi voices` to see the voices"}, "unknown voice %q", voice)
 				}
 				if lang != "" && v.Lang != lang {
@@ -94,7 +94,7 @@ French).
 	c.Flags().StringVarP(&file, "file", "f", "", "read the text from a file (- for standard input)")
 	c.Flags().StringVar(&voice, "voice", "", "voice name (see `tts-axi voices`)")
 	completeSpeakFlags(c)
-	_ = c.RegisterFlagCompletionFunc("voice", completeVoices)
+	_ = c.RegisterFlagCompletionFunc("voice", completeVoices(a))
 	return c
 }
 
@@ -135,12 +135,12 @@ func produce(cmd *cobra.Command, a *App, f *speakFlags, kind, title string, chap
 		marks[0].Start = 0
 		marks[len(marks)-1].End = total
 	}
-	engines, voiceNames, langs, fallback := summary(lines, sp)
+	engines, models, voiceNames, langs, fallback := summary(lines, sp)
 	now := a.deps.Now()
 	ep := library.Episode{
 		ID: a.library().NewID(title, now), Title: title, Kind: kind, Created: now,
 		Seconds: total.Seconds(), Audio: "episode." + format,
-		Engines: engines, Voices: voiceNames, Lang: langs, Chapters: markTitles, Fallback: fallback,
+		Engines: engines, Models: models, Voices: voiceNames, Lang: langs, Chapters: markTitles, Fallback: fallback,
 	}
 	staged := filepath.Join(s.stage, "episode")
 	if err := mkdir(staged); err != nil {

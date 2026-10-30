@@ -73,6 +73,8 @@ type Job struct {
 	Lang   string        `json:"lang"`
 	Speed  *float64      `json:"speed"`
 	Items  []engine.Item `json:"items"`
+	// Offline is whether the helper ran with HF_HUB_OFFLINE=1.
+	Offline bool `json:"offline"`
 }
 
 func fakeHelper() int {
@@ -84,7 +86,11 @@ func fakeHelper() int {
 	job.Helper = filepath.Base(os.Args[0])
 	if job.Unit == "" {
 		job.Unit = "cpu" // the multilingual helper runs on the CPU
+		if filepath.Base(job.Model) == engine.QwenName {
+			job.Unit = "gpu" // the cloned-voice helper runs on the GPU
+		}
 	}
+	job.Offline = os.Getenv("HF_HUB_OFFLINE") == "1"
 	if path := os.Getenv(envLog); path != "" {
 		f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 		if err == nil {
@@ -253,6 +259,34 @@ func Install(t *testing.T, home string) {
 	must(t, e.InstallMultilingual(t.Context()))
 }
 
+// QwenSource serves three small stand-ins for the cloned-voice model's files,
+// pinned the way the real ones are, so tests download and verify them without
+// the 3 GB model. Nothing is installed until a test runs InstallQwen.
+func QwenSource(t *testing.T) engine.QwenSource {
+	t.Helper()
+	files := map[string]string{
+		"config.json":                  `{"model_type":"qwen3_tts"}`,
+		"model.safetensors":            "stand-in weights",
+		"speech_tokenizer/config.json": `{"stand":"in"}`,
+	}
+	var pins []engine.QwenFile
+	for name, body := range files {
+		sum := sha256.Sum256([]byte(body))
+		pins = append(pins, engine.QwenFile{Path: name, Size: int64(len(body)), SHA256: hex.EncodeToString(sum[:])})
+	}
+	slices.SortFunc(pins, func(a, b engine.QwenFile) int { return strings.Compare(a.Path, b.Path) })
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, ok := files[strings.TrimPrefix(r.URL.Path, "/")]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+	return engine.QwenSource{BaseURL: srv.URL, Files: pins}
+}
+
 // FakeEnv steers the fakes for one test.
 func FakeEnv(t *testing.T, failUnit, sleepUnit string, sleep time.Duration) {
 	t.Helper()
@@ -353,7 +387,7 @@ var Warning = guard.Sample{Pressure: guard.Warning, SwapUsedBytes: 7 << 30}
 
 // FastLimits are the real thresholds with a fast sampling interval and a
 // short settle time, so stop tests take milliseconds.
-var FastLimits = guard.Limits{SwapGrowth: time.Minute, SwapBytes: 256 << 20, Interval: 10 * time.Millisecond, Settle: 2 * time.Second}
+var FastLimits = guard.Limits{SwapGrowth: time.Minute, SwapBytes: 256 << 20, Interval: 10 * time.Millisecond, Settle: 2 * time.Second, WarmupCritical: 100 * time.Millisecond}
 
 func must(t *testing.T, err error) {
 	t.Helper()

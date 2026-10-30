@@ -38,7 +38,7 @@ then open the address it prints on the phone. Set base_url in
 			rows := make([]output.Obj, 0, len(eps))
 			for _, ep := range eps {
 				rows = append(rows, output.Obj{}.Set("episode", ep.ID).Set("title", ep.Title).Set("kind", ep.Kind).
-					Set("length", library.FormatSeconds(ep.Seconds)).Set("engine", strings.Join(ep.Engines, ",")))
+					Set("length", library.FormatSeconds(ep.Seconds)).Set("model", strings.Join(ep.Models, ",")).Set("engine", strings.Join(ep.Engines, ",")))
 			}
 			doc := output.Obj{}.Set("library", lib.Dir).Set("episodes", rows)
 			help := []string{"open " + filepath.Join(lib.Dir, "index.html") + " to play them"}

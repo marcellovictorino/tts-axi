@@ -6,6 +6,12 @@ All notable changes to tts-axi are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Cloned voices. `tts-axi voice add <name> --clip <audio> --text "<words>"` (or `--text-file`) converts a recording to a 24 kHz mono WAV and keeps it with its words in `~/.tts-axi/voices/<name>`, outside the repository and the library. `--voice <name>` then works in `say`, `deck` and `render` (a bare `--voice` in `render` is the narrator's voice), for English, spoken by Qwen3-TTS 1.7B Base (8-bit) through mlx-audio, run by uv, under the memory guard. `doctor --fix` downloads the 3 GB model from Hugging Face with no account, pinned by size and SHA-256 per file; a cloned render downloads it on first use if it is missing.
+- `tts-axi voices` lists cloned voices and has a `model` column (`phonon` or `qwen`); results, `library` and `episode.json` name the model that spoke. Built-in voices stay on Phonon, the default.
+- The memory guard treats a cloned voice's first load leniently: until the first line is spoken only critical pressure lasting 5 seconds stops the run, then swap growth is measured from that moment, pressure at warning is tolerated and critical pressure stops it at once. Built-in voices keep the existing stops.
+
 ### Changed
 
 - Portuguese and French no longer need a Hugging Face account or token. `tts-axi doctor --fix` downloads the same phonon-40m-multilingual weights from Ollama's registry (`phonon:40m-multilingual`, 122 MB, pinned by SHA-256) with no sign-in, and merges them into `~/.tts-axi/models/phonon-40m-multilingual`, which ptts loads. Ollama itself is not needed. Run `tts-axi doctor --fix` once after upgrading; the old copy in the Hugging Face cache (`~/.cache/huggingface/hub/models--gradium--phonon-40m-multilingual`) is no longer used and can be deleted.

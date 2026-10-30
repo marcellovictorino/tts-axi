@@ -67,6 +67,13 @@ func (p Paths) ModelsDir() string { return filepath.Join(p.Home, "models") }
 // PttsDir holds the Python helper script for the multilingual route.
 func (p Paths) PttsDir() string { return filepath.Join(p.Home, "ptts") }
 
+// QwenHelperDir holds the Python helper script for cloned voices.
+func (p Paths) QwenHelperDir() string { return filepath.Join(p.Home, "qwen") }
+
+// VoicesDir holds the cloned voices: a clip and its words per voice. It sits
+// beside the models, outside the library and any repository.
+func (p Paths) VoicesDir() string { return filepath.Join(p.Home, "voices") }
+
 // Settings are the values a person may change in config.toml. Every field is
 // optional; zero values mean "use the default".
 type Settings struct {

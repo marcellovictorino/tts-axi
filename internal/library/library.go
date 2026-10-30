@@ -28,6 +28,7 @@ type Episode struct {
 	Audio    string    `json:"audio"`              // file name inside the folder
 	Player   string    `json:"player,omitempty"`   // deck player page
 	Engines  []string  `json:"engines"`            // routes that spoke it
+	Models   []string  `json:"models,omitempty"`   // speech models: phonon, qwen
 	Voices   []string  `json:"voices"`             // voices heard
 	Lang     []string  `json:"lang"`               // languages
 	Chapters []string  `json:"chapters,omitempty"` // chapter titles

@@ -33,7 +33,9 @@ func newRenderCmd(a *App) *cobra.Command {
 lines continue it until a blank line. A speaker named after a voice (Hugh:,
 Davi:) uses it, mapped speakers use their voice, and the others take the
 language's default voices in order. [pause 2s] inserts real silence. Voices
-of different languages can share a script.`,
+of different languages can share a script. --voice mf alone gives the
+narrator (text with no speaker) that voice, and a cloned voice (see
+"tts-axi voice add") is used by name like any other.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := a.load(); err != nil {
@@ -71,7 +73,7 @@ of different languages can share a script.`,
 		},
 	}
 	f.register(c, true)
-	c.Flags().StringArrayVar(&mapping, "voice", nil, "give a speaker a voice, Speaker=Voice (repeatable)")
+	c.Flags().StringArrayVar(&mapping, "voice", nil, "the narrator's voice, or Speaker=Voice for a speaker (repeatable)")
 	completeSpeakFlags(c)
 	return c
 }

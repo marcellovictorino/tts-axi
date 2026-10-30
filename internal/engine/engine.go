@@ -19,6 +19,13 @@
 //     CPU. A guard stop waits for pressure to settle, then retries once on the
 //     CPU.
 //  5. If the retry also fails, the render fails and nothing is written.
+//
+// A cloned voice (Job.Clone) skips the Neural Engine step: it runs Qwen3-TTS
+// through mlx-audio on the Mac's GPU, downloads its model on first use if
+// doctor --fix has not, and has its stops measured from after the first
+// spoken line (until then only critical pressure stops it), because loading
+// a 3 GB model and encoding the reference clip are a one-off jump in memory.
+// A guard stop retries once on the same route, like the CPU routes.
 package engine
 
 import (
@@ -32,6 +39,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/marcellovictorino/tts-axi/internal/config"
@@ -45,7 +53,17 @@ const (
 	ANE     Route = "ane"      // Core ML on the Neural Engine (English)
 	CPU     Route = "cpu"      // the same Core ML bundle on the CPU (English)
 	PttsCPU Route = "ptts-cpu" // ptts with the multilingual model on the CPU
+	QwenMLX Route = "qwen-mlx" // Qwen3-TTS Base through mlx-audio, for cloned voices
 )
+
+// Model names the speech model behind a route: phonon for every built-in
+// voice, qwen for cloned voices.
+func (r Route) Model() string {
+	if r == QwenMLX {
+		return "qwen"
+	}
+	return "phonon"
+}
 
 // Engine holds what the helpers need. Zero values of the optional fields
 // mean the real thing.
@@ -55,11 +73,12 @@ type Engine struct {
 	Sampler guard.Sampler
 	Limits  guard.Limits
 
-	Swiftc        string   // swiftc, to build the helper
-	Uv            string   // uv, to run the multilingual helper
-	ReleaseBase   string   // tests: where release assets are served from
-	CheckpointURL string   // tests: where the checkpoint is served from
-	Registry      Registry // tests: where the multilingual model is served from
+	Swiftc        string     // swiftc, to build the helper
+	Uv            string     // uv, to run the multilingual helper
+	ReleaseBase   string     // tests: where release assets are served from
+	CheckpointURL string     // tests: where the checkpoint is served from
+	Registry      Registry   // tests: where the multilingual model is served from
+	Qwen          QwenSource // tests: where the cloned-voice model is served from
 	// MultilingualModel overrides the French and Portuguese model folder, for
 	// example to try the route with another ptts model.
 	MultilingualModel string
@@ -86,6 +105,10 @@ type Item struct {
 	Text  string `json:"text"`
 	Voice string `json:"voice"`
 	Out   string `json:"out"`
+	// RefAudio and RefText are a cloned voice's clip and its words; empty for
+	// a built-in voice.
+	RefAudio string `json:"ref_audio,omitempty"`
+	RefText  string `json:"ref_text,omitempty"`
 }
 
 // Job is a batch of lines in one language, spoken by one helper process.
@@ -95,6 +118,9 @@ type Job struct {
 	Items []Item
 	// ForceCPU skips the Neural Engine (--engine cpu).
 	ForceCPU bool
+	// Clone sends the job to the cloned-voice helper (Qwen); every item then
+	// carries RefAudio and RefText.
+	Clone bool
 }
 
 // Attempt records one helper run.
@@ -128,7 +154,14 @@ func (e *Engine) Speak(ctx context.Context, job Job) (Outcome, error) {
 	}
 
 	first := PttsCPU
-	if job.Lang == "en" {
+	if job.Clone {
+		first = QwenMLX
+		if !e.QwenInstalled() {
+			if err := e.InstallQwen(ctx); err != nil {
+				return out, fmt.Errorf("downloading the cloned-voice model: %w", err)
+			}
+		}
+	} else if job.Lang == "en" {
 		first = ANE
 		switch {
 		case job.ForceCPU:
@@ -156,7 +189,7 @@ func (e *Engine) Speak(ctx context.Context, job Job) (Outcome, error) {
 	switch {
 	case guard.IsStop(err):
 		out.Fallback = err.Error()
-		e.progress("%s; waiting for memory to settle before one retry on the CPU", err)
+		e.progress("%s; waiting for memory to settle before one retry", err)
 		if base, err = guard.Settle(ctx, e.Sampler, e.Limits, base.Pressure); err != nil {
 			return out, fmt.Errorf("%s, and %w", out.Fallback, err)
 		}
@@ -171,7 +204,11 @@ func (e *Engine) Speak(ctx context.Context, job Job) (Outcome, error) {
 	load, err = e.attempt(ctx, job, retry, base)
 	out.Attempts = append(out.Attempts, Attempt{retry, describe(err)})
 	if err != nil {
-		return out, fmt.Errorf("%s; the CPU retry also failed: %w", out.Fallback, err)
+		what := "the CPU retry"
+		if retry == QwenMLX {
+			what = "the retry"
+		}
+		return out, fmt.Errorf("%s; %s also failed: %w", out.Fallback, what, err)
 	}
 	out.Route, out.Load = retry, load
 	return out, nil
@@ -216,6 +253,16 @@ func (e *Engine) attempt(ctx context.Context, job Job, route Route, base guard.S
 		}
 		name = e.Paths.HelperBin()
 		input = map[string]any{"model": dir, "unit": unit, "lang": job.Lang, "items": job.Items}
+	case QwenMLX:
+		if !e.QwenInstalled() {
+			return 0, errMissing("the cloned-voice model is not downloaded")
+		}
+		script, err := e.WriteQwenHelper()
+		if err != nil {
+			return 0, err
+		}
+		name, args = e.uv(), e.QwenArgs(script)
+		input = map[string]any{"model": e.QwenDir(), "lang": job.Lang, "items": job.Items}
 	case PttsCPU:
 		if e.MultilingualModel == "" && !e.MultilingualInstalled() {
 			return 0, errMissing("the French and Portuguese model is not downloaded")
@@ -238,9 +285,20 @@ func (e *Engine) attempt(ctx context.Context, job Job, route Route, base guard.S
 	pr, pw := io.Pipe()
 	cmd.Stdout = pw
 	events := make(chan helperResult, 1)
-	go func() { events <- readEvents(pr, len(job.Items), e.progress) }()
+	var warm chan struct{}
+	var onItem func()
+	if route == QwenMLX {
+		// mlx-audio reads only local files; the model is already downloaded.
+		cmd.Env = append(os.Environ(), "HF_HUB_OFFLINE=1")
+		// The first spoken line ends the warm-up: until then only critical
+		// pressure stops the run (see guard.RunAfterWarmup).
+		warm = make(chan struct{})
+		var once sync.Once
+		onItem = func() { once.Do(func() { close(warm) }) }
+	}
+	go func() { events <- readEvents(pr, len(job.Items), e.progress, onItem) }()
 
-	runErr := guard.Run(ctx, e.Sampler, e.Limits, base, cmd)
+	runErr := guard.RunAfterWarmup(ctx, e.Sampler, e.Limits, base, cmd, warm)
 	_ = pw.Close()
 	res := <-events
 	if runErr != nil {
@@ -274,7 +332,7 @@ type helperResult struct {
 }
 
 // readEvents follows the helper's JSON lines.
-func readEvents(r io.Reader, total int, progress func(string, ...any)) helperResult {
+func readEvents(r io.Reader, total int, progress func(string, ...any), onItem func()) helperResult {
 	var res helperResult
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 64<<10), 1<<20)
@@ -292,6 +350,9 @@ func readEvents(r io.Reader, total int, progress func(string, ...any)) helperRes
 			res.load = time.Duration(ev.LoadS * float64(time.Second))
 		case "item":
 			res.items++
+			if onItem != nil {
+				onItem()
+			}
 			if progress != nil && total > 1 {
 				progress("spoke %d of %d", res.items, total)
 			}

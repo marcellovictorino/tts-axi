@@ -28,6 +28,21 @@ type Voice struct {
 	Name        string `json:"name"`
 	Lang        string `json:"lang"`
 	Description string `json:"description"`
+	// Ref and RefText are set only for a cloned voice: the reference clip's
+	// WAV and its words. The catalog has none.
+	Ref     string `json:"-"`
+	RefText string `json:"-"`
+}
+
+// Cloned reports whether the voice is a clone, spoken by Qwen rather than Phonon.
+func (v Voice) Cloned() bool { return v.Ref != "" }
+
+// Model names the speech model behind the voice.
+func (v Voice) Model() string {
+	if v.Cloned() {
+		return "qwen"
+	}
+	return "phonon"
 }
 
 // Languages are the supported language codes, in display order.
@@ -55,7 +70,32 @@ func Catalog() []Voice { return append([]Voice(nil), catalog...) }
 // Set is the voice configuration in effect: the catalog plus the default
 // order, which settings may override per language.
 type Set struct {
-	order map[string][]string
+	order  map[string][]string
+	clones []Voice
+}
+
+// WithClones adds cloned voices, which are English, so they can be found by
+// name like catalog voices.
+func (s Set) WithClones(vs []Voice) Set {
+	s.clones = append([]Voice(nil), vs...)
+	return s
+}
+
+// Clones lists the cloned voices.
+func (s Set) Clones() []Voice { return append([]Voice(nil), s.clones...) }
+
+// Find looks a voice up by name among the catalog and the cloned voices.
+func (s Set) Find(name string) (Voice, bool) {
+	if v, ok := Find(name); ok {
+		return v, true
+	}
+	key := fold(name)
+	for _, v := range s.clones {
+		if fold(v.Name) == key {
+			return v, true
+		}
+	}
+	return Voice{}, false
 }
 
 // NewSet applies per-language overrides to Defaults. Every name must be a
@@ -171,9 +211,9 @@ type Caster struct {
 func NewCaster(set Set, lang string, mapping map[string]string) (*Caster, error) {
 	c := &Caster{set: set, lang: lang, explicit: map[string]Voice{}, assigned: map[string]Voice{}, used: map[string]bool{}}
 	for speaker, name := range mapping {
-		v, ok := Find(name)
+		v, ok := set.Find(name)
 		if !ok {
-			return nil, fmt.Errorf("speaker %q: %q is not a catalog voice (see `tts-axi voices`)", speaker, name)
+			return nil, fmt.Errorf("speaker %q: %q is not a voice (see `tts-axi voices`)", speaker, name)
 		}
 		c.explicit[fold(speaker)] = v
 		c.used[v.Name] = true
@@ -192,7 +232,7 @@ func (c *Caster) Voice(speaker string) (Voice, error) {
 		return v, nil
 	}
 	if speaker != "" {
-		if v, ok := Find(speaker); ok {
+		if v, ok := c.set.Find(speaker); ok {
 			c.assigned[key] = v
 			c.used[v.Name] = true
 			return v, nil
