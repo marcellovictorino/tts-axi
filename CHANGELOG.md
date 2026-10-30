@@ -6,6 +6,8 @@ All notable changes to tts-axi are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-30
+
 ### Added
 
 - Cloned voices. `tts-axi voice add <name> --clip <audio> --text "<words>"` (or `--text-file`) converts a recording to a 24 kHz mono WAV and keeps it with its words in `~/.tts-axi/voices/<name>`, outside the repository and the library. `--voice <name>` then works in `say`, `deck` and `render` (a bare `--voice` in `render` is the narrator's voice), for English, spoken by Qwen3-TTS 1.7B Base (8-bit) through mlx-audio, run by uv, under the memory guard. `doctor --fix` downloads the 3 GB model from Hugging Face with no account, pinned by size and SHA-256 per file; a cloned render downloads it on first use if it is missing.
