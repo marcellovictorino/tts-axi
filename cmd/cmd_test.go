@@ -34,6 +34,7 @@ type env struct {
 	sampler  *testutil.Sampler
 	now      time.Time
 	registry engine.Registry
+	qwen     engine.QwenSource
 }
 
 func newEnv(t *testing.T) *env {
@@ -56,6 +57,7 @@ func newEnv(t *testing.T) *env {
 	t.Setenv("NO_COLOR", "1")
 	testutil.Install(t, filepath.Join(dir, "tts"))
 	e.registry = testutil.Registry(t)
+	e.qwen = testutil.QwenSource(t)
 	return e
 }
 
@@ -70,7 +72,7 @@ func (e *env) run(args ...string) result {
 	e.t.Helper()
 	var out, errOut bytes.Buffer
 	deps := Deps{Out: &out, Err: &errOut, In: strings.NewReader("Bom dia a todos."), Sampler: e.sampler,
-		Limits: testutil.FastLimits, HTTP: http.DefaultClient, Now: func() time.Time { return e.now }, Registry: e.registry}
+		Limits: testutil.FastLimits, HTTP: http.DefaultClient, Now: func() time.Time { return e.now }, Registry: e.registry, Qwen: e.qwen}
 	code := Run(context.Background(), deps, args)
 	norm := func(s string) string { return strings.ReplaceAll(s, e.dir, "$TMP") }
 	return result{out: norm(out.String()), err: norm(errOut.String()), code: code}
@@ -347,7 +349,7 @@ func TestLibraryListAndRemove(t *testing.T) {
 	e.now = e.now.Add(time.Hour)
 	e.run("say", "Two.").ok(t)
 	r := e.run("library").ok(t)
-	if !strings.Contains(r.out, "episodes[2]{episode,title,kind,length,engine}:\n  2026-10-22-two,Two,say,") {
+	if !strings.Contains(r.out, "episodes[2]{episode,title,kind,length,model,engine}:\n  2026-10-22-two,Two,say,") {
 		t.Errorf("newest first:\n%s", r.out)
 	}
 	e.run("library", "rm", "2026-10-22-one").ok(t)
@@ -401,7 +403,7 @@ func TestDoctor(t *testing.T) {
 func TestVoicesListsDefaultsFirst(t *testing.T) {
 	e := newEnv(t)
 	r := e.run("voices").ok(t)
-	if !strings.HasPrefix(r.out, "voices[64]{name,lang,default,engine,description}:\n  Hugh,en,default,ane,") {
+	if !strings.HasPrefix(r.out, "voices[64]{name,lang,default,model,engine,description}:\n  Hugh,en,default,phonon,ane,") {
 		t.Errorf("output starts:\n%.200s", r.out)
 	}
 	lines := strings.Split(r.out, "\n")

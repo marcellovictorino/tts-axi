@@ -63,6 +63,9 @@ type Limits struct {
 	// Settle is how long to wait for pressure to come back down before a
 	// retry, or before starting at all when pressure is critical.
 	Settle time.Duration
+	// WarmupCritical is how long critical pressure may last while a cloned
+	// voice's model loads (see RunAfterWarmup) before the run is stopped.
+	WarmupCritical time.Duration
 }
 
 // DefaultLimits are the agreed stops: swap growth over 256 MiB in a minute,
@@ -72,6 +75,9 @@ var DefaultLimits = Limits{
 	SwapBytes:  256 << 20,
 	Interval:   250 * time.Millisecond,
 	Settle:     2 * time.Minute,
+	// Loading Qwen's 3 GB flickers critical pressure for under a second on a
+	// Mac with a full swap; critical for this long is not a flicker.
+	WarmupCritical: 5 * time.Second,
 }
 
 // StopError reports that the guard stopped a run.
@@ -92,6 +98,11 @@ type Watcher struct {
 	lim     Limits
 	lowest  int
 	history []timed
+	// warming leaves only a sustained critical pressure as a stop.
+	warming       bool
+	criticalSince time.Time
+	// floor is a pressure level that never counts as a rise.
+	floor int
 }
 
 type timed struct {
@@ -116,9 +127,17 @@ func (w *Watcher) Check(s Sample, at time.Time) string {
 	}
 	var reason string
 	switch {
+	case w.warming:
+		if s.Pressure < Critical {
+			w.criticalSince = time.Time{}
+		} else if w.criticalSince.IsZero() {
+			w.criticalSince = at
+		} else if at.Sub(w.criticalSince) >= w.lim.WarmupCritical {
+			reason = fmt.Sprintf("memory pressure stayed critical for %s while the model loaded", w.lim.WarmupCritical)
+		}
 	case s.Pressure >= Critical:
 		reason = "memory pressure is critical"
-	case s.Pressure > w.lowest:
+	case s.Pressure > max(w.lowest, w.floor):
 		reason = fmt.Sprintf("memory pressure rose from %s to %s", PressureName(w.lowest), PressureName(s.Pressure))
 	case s.SwapUsedBytes-minSwap > w.lim.SwapBytes:
 		reason = fmt.Sprintf("swap grew by %d MiB within %s", (s.SwapUsedBytes-minSwap)>>20, w.lim.SwapGrowth)
@@ -131,6 +150,20 @@ func (w *Watcher) Check(s Sample, at time.Time) string {
 // every Interval. If a stop condition fires, the whole group is killed (which
 // unloads the model with it) and a *StopError is returned.
 func Run(ctx context.Context, s Sampler, lim Limits, base Sample, cmd *exec.Cmd) error {
+	return RunAfterWarmup(ctx, s, lim, base, cmd, nil)
+}
+
+// RunAfterWarmup is Run for a helper whose model load and first line are a
+// big, one-off jump in memory (Qwen's 3 GB, plus the reference clip's
+// encoding). Until warm is closed, only critical pressure that lasts
+// Limits.WarmupCritical stops the run: the load pages other memory out, which
+// is not growth during speech, and a pressure rise to warning, even critical
+// for a moment, is what a 3 GB model costs on a busy Mac. When
+// warm closes, the watcher starts again from the reading at that moment, so
+// swap growth is judged relative to the warmed-up state, and pressure at
+// warning is tolerated: critical pressure and swap growth stop the run. A nil warm
+// is plain Run.
+func RunAfterWarmup(ctx context.Context, s Sampler, lim Limits, base Sample, cmd *exec.Cmd, warm <-chan struct{}) error {
 	// Setpgid puts the helper and anything it starts (uv starts Python) in a
 	// new process group, so one kill reaches all of them and nothing else.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -145,6 +178,9 @@ func Run(ctx context.Context, s Sampler, lim Limits, base Sample, cmd *exec.Cmd)
 		<-done // reap it; a killed helper's exit status says nothing new
 	}
 	w := NewWatcher(lim, base, time.Now())
+	if warm != nil {
+		w.warming = true
+	}
 	tick := time.NewTicker(lim.Interval)
 	defer tick.Stop()
 	for {
@@ -154,6 +190,16 @@ func Run(ctx context.Context, s Sampler, lim Limits, base Sample, cmd *exec.Cmd)
 		case <-ctx.Done():
 			kill()
 			return ctx.Err()
+		case <-warm:
+			warm = nil // a nil channel blocks forever: restart only once
+			from := base
+			if smp, err := s.Sample(); err == nil {
+				from = smp
+			}
+			w = NewWatcher(lim, from, time.Now())
+			// A 3 GB model keeps a busy Mac at warning pressure while it
+			// speaks, so warning is tolerated; critical and swap growth stop.
+			w.floor = Warning
 		case <-tick.C:
 			smp, err := s.Sample()
 			if err != nil {

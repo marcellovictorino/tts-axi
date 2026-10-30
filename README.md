@@ -83,6 +83,21 @@ A deck for `deck` is Markdown slides separated by `---` (Marp or Slidev), with e
 
 The first voice speaks by default; script speakers take the others in order. `tts-axi voices` lists all 64 catalog voices, and `just samples pt` (or `en`, `fr`) speaks one sentence in every voice of a language into a library episode with a chapter per voice, so you can pick by ear. The samples are made on your Mac; the repository keeps no audio. The default speed is Phonon's `duration_delta` at `0.15`, a little slower than the model's own pace; `--speed` changes it.
 
+## Cloned voices
+
+A cloned voice speaks with [Qwen3-TTS](https://huggingface.co/mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit) (Apache 2.0) through [mlx-audio](https://github.com/Blaizzy/mlx-audio), run by uv, on this Mac. The clip and its words never leave it. Built-in voices stay on Phonon, which stays the default: `tts-axi voices` has a `model` column (`phonon` or `qwen`) and every result and episode names the model that spoke.
+
+```bash
+tts-axi voice add mf --clip recording.m4a --text-file words.md   # or --text "exact words"
+tts-axi say "Good morning." --voice mf
+tts-axi render day.md --voice mf          # mf narrates the text no speaker owns
+tts-axi deck talk.md --voice mf
+```
+
+`voice add` converts the clip to a 24 kHz mono WAV and keeps it with its words in `~/.tts-axi/voices/<name>`, outside any repository and the library. Give the exact words said in the clip: double quote marks are dropped and lines are joined with single spaces. A clip of 15 to 30 seconds is enough; a longer one raises the time and memory of every render. A cloned voice is English for now, and in a script a speaker named in `voices: {Host: mf}` or `--voice Host=mf` uses it (script speaker names start with a capital letter, so `mf:` alone is not a speaker).
+
+`doctor --fix` downloads the model, `Qwen3-TTS-12Hz-1.7B-Base-8bit` (3 GB), from Hugging Face with no account, pinned to one revision with every file's size and SHA-256 checked; a cloned render downloads it on first use if it is missing. Qwen costs far more than Phonon: about 10 to 14 seconds per 10 seconds of audio and 2.3 to 3.4 GB of memory, against 1 to 2 seconds and under 0.3 GB. The memory guard applies, relaxed only for the model's first load: until the first line is spoken, only critical pressure that lasts 5 seconds stops the run (loading 3 GB flickers critical pressure for under a second on a busy Mac). After that, swap growth is measured from that moment, pressure at warning is tolerated, and critical pressure stops it at once. On a Mac whose swap is nearly full, a render with several lines can still be stopped; close memory-hungry apps and run it again. Only clone a voice you have the right to use.
+
 ## Portuguese and French
 
 Portuguese and French use Gradium's [phonon-40m-multilingual](https://huggingface.co/gradium/phonon-40m-multilingual) model (CC BY-NC 4.0, non-commercial) through ptts, Gradium's Python runtime, on the CPU. `tts-axi doctor --fix` downloads it once, with nothing to set up: `tts-axi doctor` then shows `multilingual model: ok`. Try `tts-axi say "Bom dia" --lang pt`.
@@ -107,7 +122,7 @@ While a helper speaks, tts-axi watches memory pressure and swap, and stops and u
 - any rise in pressure above where the render started;
 - swap growing by more than 256 MiB within a minute.
 
-It then waits for pressure to settle and retries once on the CPU. If that is stopped too, the render fails and writes nothing. English starts on the CPU when pressure is already above normal, and falls back to the CPU if the Neural Engine fails. Every result names the engine that spoke it (`ane`, `cpu` or `ptts-cpu`); `--engine cpu` forces the CPU.
+It then waits for pressure to settle and retries once on the CPU. If that is stopped too, the render fails and writes nothing. English starts on the CPU when pressure is already above normal, and falls back to the CPU if the Neural Engine fails. Every result names the model (`phonon` or `qwen`) and the engine that spoke it (`ane`, `cpu`, `ptts-cpu` or `qwen-mlx`); `--engine cpu` forces the CPU.
 
 ## On your phone
 
@@ -151,8 +166,10 @@ tts-axi (Go)                        flags, scripts, voices, lock, memory guard,
   │                                  ffmpeg joins, library page and feed
   ├── tts-axi-helper (Swift)        English: Phonon 31M through Gradium's Core ML
   │                                  runtime, Neural Engine or CPU
-  └── uv run ptts (Python)          Portuguese, French: Phonon 40M multilingual, CPU,
-                                     weights from Ollama's registry
+  ├── uv run ptts (Python)          Portuguese, French: Phonon 40M multilingual, CPU,
+  │                                  weights from Ollama's registry
+  └── uv run mlx-audio (Python)     cloned voices: Qwen3-TTS Base, GPU, weights from
+                                     Hugging Face
 ```
 
 `doctor --fix` fetches everything a render needs ahead of time: Gradium's runtime and English Core ML bundle from its GitHub release, and the multilingual weights from Ollama's registry, merged into one folder ptts loads. Each download is pinned by SHA-256.

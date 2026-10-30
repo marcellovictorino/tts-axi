@@ -113,22 +113,28 @@ func speakLines(ctx context.Context, a *App, stage string, lines []line, speed f
 		if l.IsPause() {
 			continue
 		}
-		j, ok := jobs[l.Voice.Lang]
+		// Cloned voices all go to one Qwen job; built-in voices to one
+		// Phonon job per language.
+		key := l.Voice.Lang
+		if l.Voice.Cloned() {
+			key = "clone"
+		}
+		j, ok := jobs[key]
 		if !ok {
-			j = &engine.Job{Lang: l.Voice.Lang, Speed: speed, ForceCPU: forceCPU}
-			jobs[l.Voice.Lang] = j
-			order = append(order, l.Voice.Lang)
+			j = &engine.Job{Lang: l.Voice.Lang, Speed: speed, ForceCPU: forceCPU, Clone: l.Voice.Cloned()}
+			jobs[key] = j
+			order = append(order, key)
 		}
 		res.wavs[i] = filepath.Join(stage, fmt.Sprintf("line-%04d.wav", i+1))
-		j.Items = append(j.Items, engine.Item{Text: l.Text, Voice: l.Voice.Name, Out: res.wavs[i]})
+		j.Items = append(j.Items, engine.Item{Text: l.Text, Voice: l.Voice.Name, Out: res.wavs[i], RefAudio: l.Voice.Ref, RefText: l.Voice.RefText})
 	}
 	e := a.engine()
-	for _, lang := range order {
-		out, err := e.Speak(ctx, *jobs[lang])
+	for _, key := range order {
+		out, err := e.Speak(ctx, *jobs[key])
 		if err != nil {
 			return res, speakError(err)
 		}
-		res.outcomes[lang] = out
+		res.outcomes[key] = out
 	}
 	for i, l := range lines {
 		if l.IsPause() {
@@ -154,6 +160,8 @@ func speakError(err error) error {
 			"run `tts-axi doctor --fix` once: it downloads the French and Portuguese model (122 MB) with no account or token",
 			"nothing was written",
 		}, "%v", err)
+	case engine.IsMissing(err) && strings.Contains(err.Error(), "cloned-voice"):
+		return output.Fail([]string{"run `tts-axi doctor --fix` once: it downloads the cloned-voice model (3 GB) with no account or token", "nothing was written"}, "%v", err)
 	case engine.IsMissing(err):
 		return output.Fail([]string{"run `tts-axi doctor --fix` to install the speech runtime and model"}, "%v", err)
 	case guard.IsStop(err):
@@ -250,24 +258,36 @@ func (s *session) close() {
 }
 
 // summary collects what the result reports about engines and voices.
-func summary(lines []line, sp spoken) (engines, voiceNames, langs []string, fallback string) {
-	seenV := map[string]bool{}
+func summary(lines []line, sp spoken) (engines, models, voiceNames, langs []string, fallback string) {
+	seenV, seenL := map[string]bool{}, map[string]bool{}
 	for _, l := range lines {
-		if !l.IsPause() && !seenV[l.Voice.Name] {
+		if l.IsPause() {
+			continue
+		}
+		if !seenV[l.Voice.Name] {
 			seenV[l.Voice.Name] = true
 			voiceNames = append(voiceNames, l.Voice.Name)
 		}
+		if !seenL[l.Voice.Lang] {
+			seenL[l.Voice.Lang] = true
+			langs = append(langs, l.Voice.Lang)
+		}
 	}
-	for lang, o := range sp.outcomes {
-		langs = append(langs, lang)
+	seenM := map[string]bool{}
+	for _, o := range sp.outcomes {
 		engines = append(engines, string(o.Route))
+		if m := o.Route.Model(); !seenM[m] {
+			seenM[m] = true
+			models = append(models, m)
+		}
 		if o.Fallback != "" {
 			fallback = o.Fallback
 		}
 	}
 	sort.Strings(langs)
 	sort.Strings(engines)
-	return engines, voiceNames, langs, fallback
+	sort.Strings(models)
+	return engines, models, voiceNames, langs, fallback
 }
 
 // transcript writes the text that was spoken, with speakers and chapters.
@@ -317,6 +337,7 @@ func deliver(a *App, f *speakFlags, ep library.Episode, staged, audioName string
 	}
 	result = result.Set("title", ep.Title).
 		Set("seconds", round1(ep.Seconds)).
+		Set("model", strings.Join(ep.Models, ",")).
 		Set("engine", strings.Join(ep.Engines, ",")).
 		Set("voices", ep.Voices)
 	if ep.Fallback != "" {
@@ -374,8 +395,12 @@ func parseVoiceMap(pairs []string) (map[string]string, error) {
 	m := map[string]string{}
 	for _, p := range pairs {
 		k, v, ok := strings.Cut(p, "=")
-		if !ok || strings.TrimSpace(k) == "" || strings.TrimSpace(v) == "" {
-			return nil, output.Usage([]string{"for example --voice Host=Hugh --voice Guest=Bryony"}, "--voice takes Speaker=Voice, got %q", p)
+		if !ok && strings.TrimSpace(p) != "" {
+			// A bare voice is the narrator's: the text no speaker owns.
+			k, v, ok = "", p, true
+		}
+		if !ok || strings.TrimSpace(v) == "" {
+			return nil, output.Usage([]string{"for example --voice Hugh, or --voice Host=Hugh --voice Guest=Bryony"}, "--voice takes a voice or Speaker=Voice, got %q", p)
 		}
 		m[strings.TrimSpace(k)] = strings.TrimSpace(v)
 	}

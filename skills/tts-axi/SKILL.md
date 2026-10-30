@@ -22,7 +22,8 @@ listed). Nothing ever prompts.
 | Write to a specific file, not the library | `tts-axi say "text" --out /path/x.mp3` (`.mp3`, `.m4a`, `.wav`) |
 | Several voices, chapters, pauses | `tts-axi render script.md` |
 | Narrate slides from speaker notes | `tts-axi deck slides.md [--images pngs/]` |
-| Pick a voice | `tts-axi voices [--lang en\|pt\|fr]` |
+| Pick a voice | `tts-axi voices [--lang en\|pt\|fr]` (the `model` column: phonon, or qwen for a cloned voice) |
+| Add a cloned voice (English) | `tts-axi voice add <name> --clip rec.m4a --text-file words.md`, then `--voice <name>` |
 | Find or delete earlier audio | `tts-axi library` · `tts-axi library rm <episode>` |
 | Something is wrong | `tts-axi doctor` (`tts-axi doctor --fix` installs the runtime) |
 

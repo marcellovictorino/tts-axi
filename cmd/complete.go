@@ -18,12 +18,19 @@ func fixed(vals ...string) func(*cobra.Command, []string, string) ([]string, cob
 	return func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) { return vals, noFiles }
 }
 
-func completeVoices(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	var names []string
-	for _, v := range voices.Catalog() {
-		names = append(names, v.Name+"\t"+v.Lang)
+func completeVoices(a *App) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+		var names []string
+		for _, v := range voices.Catalog() {
+			names = append(names, v.Name+"\t"+v.Lang)
+		}
+		if a.load() == nil {
+			for _, v := range a.voices.Clones() {
+				names = append(names, v.Name+"\tcloned")
+			}
+		}
+		return names, noFiles
 	}
-	return names, noFiles
 }
 
 // completeSpeakFlags registers completion for the flags say, render and deck share.

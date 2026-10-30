@@ -27,7 +27,9 @@ French and Portuguese route, memory, the library folder and the agent skill.
 (137 MB) into ~/.tts-axi, builds the Swift helper with swiftc, prepares the
 default speed, installs ptts for French and Portuguese with uv, and downloads
 the French and Portuguese model (122 MB) from Ollama's registry, with no
-account or token; Ollama itself is not needed. Every download is checked
+account or token; Ollama itself is not needed. It also installs mlx-audio
+and downloads the cloned-voice model (Qwen3-TTS 1.7B Base, 3 GB, from Hugging
+Face, no account needed), which cloned voices (tts-axi voice add) run on. Every download is checked
 against a pinned checksum. It loads no model. Running it again is a no-op.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -64,6 +66,16 @@ against a pinned checksum. It loads no model. Running it again is a no-op.`,
 					return e.WarmPtts(ctx)
 				})
 				step("downloading the French and Portuguese model", func() error { return e.InstallMultilingual(ctx) })
+				step("installing mlx-audio for cloned voices", func() error {
+					if _, err := e.WriteQwenHelper(); err != nil {
+						return err
+					}
+					if _, err := exec.LookPath("uv"); err != nil {
+						return nil // reported below as a warning
+					}
+					return e.WarmQwen(ctx)
+				})
+				step("downloading the cloned-voice model", func() error { return e.InstallQwen(ctx) })
 				step("creating the library", func() error { return a.library().Rebuild() })
 			}
 
@@ -114,6 +126,7 @@ against a pinned checksum. It loads no model. Running it again is a no-op.`,
 				add("french, portuguese", "warn", "uv is missing (brew install uv); English still works")
 			}
 			add(multilingualStatus(e))
+			add(qwenStatus(a, e))
 			add(memoryStatus(a))
 			add(libraryStatus(a))
 			missing := missingSkillDirs()
@@ -164,6 +177,17 @@ func multilingualStatus(e *engine.Engine) (string, string, string) {
 		return name, "ok", "phonon-40m-multilingual, downloaded from Ollama's registry"
 	}
 	return name, "warn", "not downloaded (122 MB, no account needed): tts-axi doctor --fix; English works without it"
+}
+
+// qwenStatus says whether the cloned-voice model is in place and how many
+// voices use it.
+func qwenStatus(a *App, e *engine.Engine) (string, string, string) {
+	const name = "cloned-voice model"
+	n := len(a.voices.Clones())
+	if e.QwenInstalled() {
+		return name, "ok", fmt.Sprintf("Qwen3-TTS 1.7B Base 8-bit through mlx-audio %s; cloned voices: %d", engine.MlxAudioVersion, n)
+	}
+	return name, "warn", "not downloaded (3 GB, no account needed): tts-axi doctor --fix; built-in voices work without it"
 }
 
 func memoryStatus(a *App) (string, string, string) {

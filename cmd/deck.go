@@ -77,7 +77,7 @@ of the simple built-in rendering.
 			var v voices.Voice
 			if voice != "" {
 				var ok bool
-				if v, ok = voices.Find(voice); !ok {
+				if v, ok = a.voices.Find(voice); !ok {
 					return output.Usage([]string{"run `tts-axi voices` to see the voices"}, "unknown voice %q", voice)
 				}
 				if lang != "" && v.Lang != lang {
@@ -109,7 +109,7 @@ of the simple built-in rendering.
 	c.Flags().StringVar(&images, "images", "", "folder of exported slide pictures (png, jpg or webp), one per slide")
 	c.Flags().DurationVar(&silent, "silent", 4*time.Second, "how long a slide without notes stays up")
 	completeSpeakFlags(c)
-	_ = c.RegisterFlagCompletionFunc("voice", completeVoices)
+	_ = c.RegisterFlagCompletionFunc("voice", completeVoices(a))
 	_ = c.MarkFlagDirname("images")
 	return c
 }
@@ -197,7 +197,7 @@ func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d scri
 		player = append(player, ps)
 	}
 
-	engines, voiceNames, langs, fallback := summary(lines, sp)
+	engines, models, voiceNames, langs, fallback := summary(lines, sp)
 	now := a.deps.Now()
 	var titles []string
 	for _, sl := range d.Slides {
@@ -206,7 +206,7 @@ func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d scri
 	ep := library.Episode{
 		ID: a.library().NewID(title, now), Title: title, Kind: "deck", Created: now,
 		Seconds: at.Seconds(), Audio: "deck." + format, Player: "player.html",
-		Engines: engines, Voices: voiceNames, Lang: langs, Chapters: titles, Fallback: fallback,
+		Engines: engines, Models: models, Voices: voiceNames, Lang: langs, Chapters: titles, Fallback: fallback,
 	}
 	meta := audio.Meta{Title: title, Artist: strings.Join(voiceNames, ", "), Album: "tts-axi"}
 	if err := audio.Join(ctx, "ffmpeg", s.stage, full, marks, meta, filepath.Join(staged, ep.Audio)); err != nil {

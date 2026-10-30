@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/marcellovictorino/tts-axi/internal/clones"
 	"github.com/marcellovictorino/tts-axi/internal/config"
 	"github.com/marcellovictorino/tts-axi/internal/engine"
 	"github.com/marcellovictorino/tts-axi/internal/guard"
@@ -38,7 +39,8 @@ type Deps struct {
 	Limits    guard.Limits
 	HTTP      *http.Client
 	Now       func() time.Time
-	Registry  engine.Registry // zero: Ollama's registry and the pinned manifest
+	Registry  engine.Registry   // zero: Ollama's registry and the pinned manifest
+	Qwen      engine.QwenSource // zero: Hugging Face and the pinned files
 }
 
 // App is the state shared by all commands. Paths and settings load lazily so
@@ -75,7 +77,15 @@ func (a *App) load() error {
 	if err != nil {
 		return output.Fail([]string{"fix the voices table in " + p.Config}, "%v", err)
 	}
-	a.paths, a.settings, a.voices = p, s, vs
+	stored, err := clones.List(p.VoicesDir())
+	if err != nil {
+		return output.Fail(nil, "reading the cloned voices in %s: %v", p.VoicesDir(), err)
+	}
+	cloned := make([]voices.Voice, len(stored))
+	for i, c := range stored {
+		cloned[i] = voices.Voice{Name: c.Name, Lang: "en", Description: "cloned voice (Qwen3-TTS)", Ref: c.Ref, RefText: c.Text}
+	}
+	a.paths, a.settings, a.voices = p, s, vs.WithClones(cloned)
 	a.loaded = true
 	return nil
 }
@@ -88,6 +98,7 @@ func (a *App) engine() *engine.Engine {
 		Sampler:           a.deps.Sampler,
 		Limits:            a.deps.Limits,
 		Registry:          a.deps.Registry,
+		Qwen:              a.deps.Qwen,
 		MultilingualModel: os.Getenv("TTS_AXI_MULTILINGUAL_MODEL"),
 		Progress:          a.printer.Progress,
 	}

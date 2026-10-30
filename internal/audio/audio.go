@@ -277,3 +277,9 @@ func pcmData(data []byte) ([]byte, error) {
 	}
 	return nil, fmt.Errorf("no data chunk")
 }
+
+// ToReference converts any audio file ffmpeg can read into a 24 kHz mono
+// 16-bit WAV, the form a cloned voice's reference clip is stored in.
+func ToReference(ctx context.Context, ffmpeg, in, out string) error {
+	return runFFmpeg(ctx, ffmpeg, []string{"-y", "-v", "error", "-i", in, "-vn", "-ar", "24000", "-ac", "1", "-c:a", "pcm_s16le", out})
+}

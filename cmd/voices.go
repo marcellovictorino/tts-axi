@@ -17,7 +17,9 @@ func newVoicesCmd(a *App) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "voices",
 		Short: "List the voices: your defaults first, then the catalog",
-		Long: `List Phonon's catalog voices for English, Portuguese and French.
+		Long: `List Phonon's catalog voices for English, Portuguese and French, then your
+cloned voices (model qwen; see "tts-axi voice add"). The model column says
+which speaks: phonon for every built-in voice, qwen only for a cloned one.
 
 Default voices come first, in order: the first speaks when no voice is given,
 the next ones go to a script's second, third... speaker. Change the order in
@@ -30,7 +32,7 @@ the next ones go to a script's second, third... speaker. Change the order in
 			if lang != "" && !voices.IsLanguage(lang) {
 				return output.Usage([]string{"valid languages: " + strings.Join(voices.Languages, ", ")}, "unknown --lang %q", lang)
 			}
-			all := voices.Catalog()
+			all := append(voices.Catalog(), a.voices.Clones()...)
 			langRank := map[string]int{}
 			for i, l := range voices.Languages {
 				langRank[l] = i
@@ -65,10 +67,13 @@ the next ones go to a script's second, third... speaker. Change the order in
 					desc = shorten(desc, 60)
 				}
 				engineName := string(engine.ANE)
-				if v.Lang != "en" {
+				switch {
+				case v.Cloned():
+					engineName = string(engine.QwenMLX)
+				case v.Lang != "en":
 					engineName = string(engine.PttsCPU)
 				}
-				rows = append(rows, output.Obj{}.Set("name", v.Name).Set("lang", v.Lang).Set("default", def).Set("engine", engineName).Set("description", desc))
+				rows = append(rows, output.Obj{}.Set("name", v.Name).Set("lang", v.Lang).Set("default", def).Set("model", v.Model()).Set("engine", engineName).Set("description", desc))
 			}
 			a.printer.Emit(output.Obj{}.Set("voices", rows).Set("help", []string{
 				`tts-axi say "Hello" --voice <name>`,

@@ -64,7 +64,7 @@ var indexTmpl = template.Must(template.New("index").Funcs(template.FuncMap{
 <p class="sub">{{len .}} episode{{if ne (len .) 1}}s{{end}} · <a href="feed.xml">podcast feed</a></p>
 {{range .}}<article>
   <h2>{{.Title}}</h2>
-  <div class="meta">{{date .Created}} · {{dur .Seconds}} · {{.Kind}} · {{join .Voices}} · {{join .Engines}}</div>
+  <div class="meta">{{date .Created}} · {{dur .Seconds}} · {{.Kind}} · {{join .Voices}} · {{join .Models}} · {{join .Engines}}</div>
   {{if .Player}}<div class="links"><a href="{{href .ID .Player}}">▶ Open the narrated deck</a></div>
   {{end}}<audio controls preload="none" src="{{href .ID .Audio}}"></audio>
   <div class="links"><a href="{{href .ID "transcript.md"}}">Transcript</a><a href="{{href .ID .Audio}}" download>Download</a></div>
