@@ -5,7 +5,7 @@ import "runtime/debug"
 
 // Version is bumped by hand with every meaningful feature (see CHANGELOG.md).
 // Keep it in sync with the top released section of the changelog.
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 // Commit returns the short git commit the binary was built from.
 //
