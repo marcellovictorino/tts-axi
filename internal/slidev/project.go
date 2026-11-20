@@ -37,15 +37,19 @@ var projectEntries = []string{
 	"vite.config.ts", "vite.config.js", "uno.config.ts", "unocss.config.ts",
 }
 
-// localRefRE finds ./name references in slides: the first path segment.
-var localRefRE = regexp.MustCompile(`(?:^|[\s(\[{"'=:,])\./([A-Za-z0-9_][\w.-]*)`)
+// localRefRE finds ./path references in slides, bare or in a Markdown
+// <./path> destination.
+var localRefRE = regexp.MustCompile(`(?:^|[\s(\[{"'=:,<])\./([A-Za-z0-9_][^\s)\]}"'<>]*)`)
 
-// entries is projectEntries plus the top-level names the slides refer to.
+// entries is projectEntries plus the paths the slides refer to: only the
+// file or folder named, never its neighbours, and never outside the deck.
 func (p Project) entries() []string {
 	names := append([]string(nil), projectEntries...)
 	for _, m := range localRefRE.FindAllStringSubmatch(p.Slides, -1) {
-		name := m[1]
-		if name == "node_modules" || name == ".git" || contains(names, name) {
+		name := filepath.Clean(filepath.FromSlash(m[1]))
+		first := strings.Split(name, string(filepath.Separator))[0]
+		if name == ".." || strings.HasPrefix(name, ".."+string(filepath.Separator)) ||
+			first == "node_modules" || first == ".git" || contains(names, name) || contains(projectEntries, first) {
 			continue
 		}
 		names = append(names, name)
@@ -97,7 +101,11 @@ func (p Project) Write(dir string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	root, err := filepath.EvalSymlinks(p.SourceDir)
+	abs, err := filepath.Abs(p.SourceDir)
+	if err != nil {
+		return err
+	}
+	root, err := filepath.EvalSymlinks(abs)
 	if err != nil {
 		return err
 	}
@@ -106,11 +114,20 @@ func (p Project) Write(dir string) error {
 		if _, err := os.Lstat(src); err != nil {
 			continue
 		}
-		if err := copyTree(root, src, filepath.Join(dir, name)); err != nil {
+		// A folder on the way could itself be a link out of the deck.
+		if real, err := filepath.EvalSymlinks(filepath.Dir(src)); err != nil || !inside(root, real) {
+			return fmt.Errorf("%s links outside the deck folder; copy the file into the deck instead", name)
+		}
+		dest := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+			return err
+		}
+		if err := copyTree(root, src, dest); err != nil {
 			return err
 		}
 	}
-	audioName := "deck" + filepath.Ext(p.Audio)
+	// A name of tts-axi's own, so a deck's public/deck.mp3 keeps its URL.
+	audioName := "tts-axi-narration" + filepath.Ext(p.Audio)
 	err = fs.WalkDir(layer, "layer", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
@@ -159,7 +176,7 @@ func copyTree(root, src, dest string) error {
 			if err != nil {
 				return err
 			}
-			if r, err := filepath.Rel(root, real); err != nil || r == ".." || strings.HasPrefix(r, ".."+string(filepath.Separator)) {
+			if !inside(root, real) {
 				inDeck, _ := filepath.Rel(root, path)
 				return fmt.Errorf("%s links outside the deck folder; copy the file into the deck instead", inDeck)
 			}
@@ -201,4 +218,10 @@ func copyFile(src, dest string) error {
 		return err
 	}
 	return out.Close()
+}
+
+// inside reports whether path is root or below it.
+func inside(root, path string) bool {
+	r, err := filepath.Rel(root, path)
+	return err == nil && r != ".." && !strings.HasPrefix(r, ".."+string(filepath.Separator))
 }

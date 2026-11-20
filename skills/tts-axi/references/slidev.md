@@ -64,7 +64,7 @@ files with these names to your deck folder; tts-axi refuses to overwrite them.
 
 | File | What it does |
 |---|---|
-| `global-top.vue` | The narration player: plays `public/deck.mp3` and moves the clicks to match. `p` plays or pauses; arrow keys move the narration. |
+| `global-top.vue` | The narration player: plays `public/tts-axi-narration.mp3` and moves the clicks to match. `p` plays or pauses; arrow keys move the narration. |
 | `slide-top.vue` | The laser pointer (below). |
 | `components/CountUp.vue` | `<CountUp :to="22" :at="1" />` counts up when click 1 arrives, once; going back shows the final value. |
 | `components/PiTerminal.vue` | A scripted coding-agent terminal session, played by clicks (below). Fixed width, so long lines never widen it. |
