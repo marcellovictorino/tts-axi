@@ -198,7 +198,7 @@ func timeline(stage string, lines []line, sp spoken) (clips []string, starts []t
 			}
 			starts[i] = total
 			clips = append(clips, p)
-			total += l.Pause
+			total += l.Pause.Round(10 * time.Millisecond) // what silence wrote
 			prev = -2 // a pause replaces the next gap
 			continue
 		}

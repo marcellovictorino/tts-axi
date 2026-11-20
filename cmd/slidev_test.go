@@ -210,6 +210,11 @@ func TestSlidevDeckRefusals(t *testing.T) {
 	e.run("deck", theme, "--slidev").fails(t, 2, `theme "apple-basic" is not installed`)
 	outside := e.write("outside.md", "---\ntheme: ../shared-theme\n---\n\n# Hi\n\n<!-- Hello. -->\n")
 	e.run("deck", outside, "--slidev").fails(t, 2, "outside the deck's folder")
+	if err := os.Symlink(t.TempDir(), filepath.Join(e.dir, "linked-theme")); err != nil {
+		t.Fatal(err)
+	}
+	linked := e.write("linked.md", "---\ntheme: ./linked-theme\n---\n\n# Hi\n\n<!-- Hello. -->\n")
+	e.run("deck", linked, "--slidev").fails(t, 2, "links outside the deck's folder")
 	e.run("deck", "-", "--video").fails(t, 2, "reads a file, not standard input")
 	vt := e.write("vt.md", "---\ntransition: view-transition\n---\n\n# Hi\n\n<!-- Hello. -->\n")
 	e.run("deck", vt, "--video").fails(t, 2, "view-transition freezes the recording")
@@ -249,5 +254,23 @@ func TestSlidevVideoRefusesOldNode(t *testing.T) {
 	e.run("deck", deck, "--video").fails(t, 1, "brew upgrade node")
 	if len(e.episodes()) != 0 {
 		t.Error("a refused deck reached the library")
+	}
+}
+
+// Intent (branch review): a cue stays on the sound however many short
+// pauses the notes hold. Each pause is written to the nearest 10 ms, and
+// the timeline must count what was written, not what was asked.
+func TestSlidevCuesStayOnTheSoundAfterPauses(t *testing.T) {
+	e := newEnv(t)
+	deck := e.write("talk.md", "# One\n\n<!--\nHello there."+strings.Repeat(" [pause 64ms]", 50)+" Still here.\n[click] And then the point.\n-->\n")
+	e.run("deck", deck, "--slidev").ok(t)
+	dir := filepath.Join(e.lib(), e.episodes()[0].ID)
+	src, _ := os.ReadFile(filepath.Join(dir, "slidev", "slides.md"))
+	start, cues := readCues(t, string(src), 0)
+	pcm := decode(t, filepath.Join(dir, "deck.mp3"))
+	speech := loudness(t, pcm, start+0.1, start+0.3)
+	at := start + cues[0]
+	if v := loudness(t, pcm, at-0.1, at+0.5); v > speech/10 {
+		t.Errorf("the click at %.2f s is not in its pause (level %.0f, speech %.0f)", at, v, speech)
 	}
 }
