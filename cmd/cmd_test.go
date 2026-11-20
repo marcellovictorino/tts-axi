@@ -35,6 +35,7 @@ type env struct {
 	now      time.Time
 	registry engine.Registry
 	qwen     engine.QwenSource
+	chrome   engine.ChromeSource
 }
 
 func newEnv(t *testing.T) *env {
@@ -58,6 +59,7 @@ func newEnv(t *testing.T) *env {
 	testutil.Install(t, filepath.Join(dir, "tts"))
 	e.registry = testutil.Registry(t)
 	e.qwen = testutil.QwenSource(t)
+	e.chrome = testutil.ChromeSource(t)
 	return e
 }
 
@@ -72,7 +74,7 @@ func (e *env) run(args ...string) result {
 	e.t.Helper()
 	var out, errOut bytes.Buffer
 	deps := Deps{Out: &out, Err: &errOut, In: strings.NewReader("Bom dia a todos."), Sampler: e.sampler,
-		Limits: testutil.FastLimits, HTTP: http.DefaultClient, Now: func() time.Time { return e.now }, Registry: e.registry, Qwen: e.qwen}
+		Limits: testutil.FastLimits, HTTP: http.DefaultClient, Now: func() time.Time { return e.now }, Registry: e.registry, Qwen: e.qwen, Chrome: e.chrome}
 	code := Run(context.Background(), deps, args)
 	norm := func(s string) string { return strings.ReplaceAll(s, e.dir, "$TMP") }
 	return result{out: norm(out.String()), err: norm(errOut.String()), code: code}
@@ -277,6 +279,12 @@ func TestDeckMakesClipsTimingsAndPlayer(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "slides/slide-02.mp3")); err == nil {
 		t.Error("a slide without notes got a clip")
+	}
+	// A plain deck stays a plain deck (spec item 5): no Slidev copy, no video.
+	for _, f := range []string{"slidev", "deck.mp4", "chapters.txt"} {
+		if _, err := os.Stat(filepath.Join(dir, f)); err == nil {
+			t.Errorf("a plain deck wrote %s", f)
+		}
 	}
 	var timings []library.Timing
 	data, _ := os.ReadFile(filepath.Join(dir, "timings.json"))

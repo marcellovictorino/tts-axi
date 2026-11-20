@@ -73,12 +73,15 @@ type Engine struct {
 	Sampler guard.Sampler
 	Limits  guard.Limits
 
-	Swiftc        string     // swiftc, to build the helper
-	Uv            string     // uv, to run the multilingual helper
-	ReleaseBase   string     // tests: where release assets are served from
-	CheckpointURL string     // tests: where the checkpoint is served from
-	Registry      Registry   // tests: where the multilingual model is served from
-	Qwen          QwenSource // tests: where the cloned-voice model is served from
+	Swiftc        string       // swiftc, to build the helper
+	Uv            string       // uv, to run the multilingual helper
+	Node          string       // node, to run Slidev and the recorder
+	Npm           string       // npm, to install Slidev
+	ReleaseBase   string       // tests: where release assets are served from
+	CheckpointURL string       // tests: where the checkpoint is served from
+	Registry      Registry     // tests: where the multilingual model is served from
+	Qwen          QwenSource   // tests: where the cloned-voice model is served from
+	Chrome        ChromeSource // tests: where Chrome for Testing is served from
 	// MultilingualModel overrides the French and Portuguese model folder, for
 	// example to try the route with another ptts model.
 	MultilingualModel string

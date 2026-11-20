@@ -1,0 +1,8 @@
+:root { --tts-accent: #5ac8fa; --tts-mark: #ff6b6b; }
+.slidev-layout { background: radial-gradient(1200px 600px at 80% -10%, #1b2a4a 0%, #0d1322 55%) !important; color: #eef3ff; }
+.slidev-layout h1 { font-weight: 800; letter-spacing: -0.02em; }
+.slidev-vclick-target { transition: opacity .55s ease, transform .55s cubic-bezier(.2,.8,.2,1), filter .55s ease; }
+.slidev-vclick-hidden { transform: translateY(14px) scale(.98); filter: blur(4px); }
+.eyebrow { color: var(--tts-accent); font: 600 13px/1 ui-monospace, monospace; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 1rem; }
+.panel { background: #161d30; border: 1px solid rgba(90,200,250,.28); border-radius: 16px; padding: 1.2rem; text-align: center; }
+.muted { color: #9aa6bf; }

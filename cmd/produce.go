@@ -94,6 +94,7 @@ func (f *speakFlags) resolve(a *App) (speed float64, format string, err error) {
 type line struct {
 	script.Segment
 	Voice voices.Voice
+	cue   bool // a Slidev click starts here (a pause line)
 }
 
 // spoken is the result of speaking a list of lines.

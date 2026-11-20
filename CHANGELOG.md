@@ -6,6 +6,10 @@ All notable changes to tts-axi are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Narrated Slidev decks. `tts-axi deck slides.md --slidev` splits each slide's notes at `[click]`, speaks one clip per step and writes the click times into a copy of the deck with a narration player, a laser pointer, a counter, CSS marks and a scripted terminal; `--video` records that copy in a hidden Chrome for Testing to an H.264 MP4 with chapters, plus YouTube chapter lines and captions. `tts-axi doctor --fix` installs Slidev and Chrome for Testing into `~/.tts-axi`, pinned, when Node.js is present. Plain decks are unchanged. The skill gains a Slidev reference.
+
 ## [0.2.0] - 2026-10-30
 
 ### Added

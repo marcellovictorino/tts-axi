@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/marcellovictorino/tts-axi/internal/library"
 	"github.com/marcellovictorino/tts-axi/internal/output"
 	"github.com/marcellovictorino/tts-axi/internal/script"
+	"github.com/marcellovictorino/tts-axi/internal/slidev"
 	"github.com/marcellovictorino/tts-axi/internal/voices"
 )
 
@@ -26,6 +28,7 @@ func newDeckCmd(a *App) *cobra.Command {
 	var f speakFlags
 	var voice, images string
 	var silent time.Duration
+	var slidevMode, video bool
 	c := &cobra.Command{
 		Use:   "deck <slides.md>",
 		Short: "Narrate a slide deck from its speaker notes, with an auto-advancing player",
@@ -42,8 +45,23 @@ chapter per slide), timings.json and player.html. With --images, the player
 shows your exported slide pictures (sorted by name, one per slide) instead
 of the simple built-in rendering.
 
+With --slidev the deck is a Slidev slides.md: each slide's presenter notes
+(its last HTML comment) are split at [click] markers, the words before the
+first marker play when the slide opens and each later part after its click.
+Every part is spoken as its own clip, so the click times are exact. The
+episode gets slidev/, a copy of the deck with each slide's start, cues and
+clicks written into its frontmatter, plus tts-axi's narration layer: a
+player (press p), a laser pointer (data-laser), CountUp, marks, spotlight,
+bars and a PiTerminal emulation. The original deck is not changed.
+
+--video also records the narrated deck in a hidden Chrome into deck.mp4
+(H.264 with AAC sound and chapter marks), with chapters.txt (YouTube
+chapter lines) and captions.srt. It needs Slidev and Chrome for Testing,
+which tts-axi doctor --fix installs.
+
   tts-axi deck talk.md
-  tts-axi deck talk.md --images exported-pngs/ --voice Bryony`,
+  tts-axi deck talk.md --images exported-pngs/ --voice Bryony
+  tts-axi deck slides.md --slidev --video`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := a.load(); err != nil {
@@ -60,8 +78,22 @@ of the simple built-in rendering.
 			if format == "wav" {
 				return output.Usage([]string{"use --as mp3 or --as m4a"}, "a deck's clips are mp3 or m4a")
 			}
-			d, err := script.ParseDeck(src)
-			if err != nil {
+			if video {
+				slidevMode = true
+			}
+			var sd slidev.Deck
+			var d script.Deck
+			if slidevMode {
+				if images != "" {
+					return output.Usage([]string{"drop --images: a Slidev deck is shown by Slidev itself"}, "--images does not apply to --slidev")
+				}
+				if args[0] == "-" {
+					return output.Usage([]string{"pass the path to slides.md, so its components and pictures can be copied"}, "--slidev reads a file, not standard input")
+				}
+				if sd, d, err = parseSlidev(a, src, args[0], video); err != nil {
+					return err
+				}
+			} else if d, err = script.ParseDeck(src); err != nil {
 				return output.Usage(nil, "%v", err)
 			}
 			var pictures []string
@@ -92,6 +124,14 @@ of the simple built-in rendering.
 				}
 				v, _ = voices.Find(a.voices.Default(lang))
 			}
+			title := firstNonEmpty(f.title, d.Title)
+			if slidevMode {
+				lines := slidevLines(sd, v)
+				return produceDeck(cmd, a, &f, title, d, lines, nil, speed, format, silent,
+					func(ctx context.Context, s *session, staged string, l deckLayout) (output.Obj, error) {
+						return finishSlidev(ctx, a, s, staged, filepath.Dir(args[0]), sd, lines, l, video)
+					})
+			}
 			var lines []line
 			for i, s := range d.Slides {
 				for _, seg := range script.NotesScript(s.Notes) {
@@ -99,8 +139,7 @@ of the simple built-in rendering.
 					lines = append(lines, line{Segment: seg, Voice: v})
 				}
 			}
-			title := firstNonEmpty(f.title, d.Title)
-			return produceDeck(cmd, a, &f, title, d, lines, pictures, speed, format, silent)
+			return produceDeck(cmd, a, &f, title, d, lines, pictures, speed, format, silent, nil)
 		},
 	}
 	f.register(c, false)
@@ -108,13 +147,30 @@ of the simple built-in rendering.
 	c.Flags().StringVar(&voice, "voice", "", "narrator voice (see `tts-axi voices`)")
 	c.Flags().StringVar(&images, "images", "", "folder of exported slide pictures (png, jpg or webp), one per slide")
 	c.Flags().DurationVar(&silent, "silent", 4*time.Second, "how long a slide without notes stays up")
+	c.Flags().BoolVar(&slidevMode, "slidev", false, "narrate a Slidev deck: split notes at [click], write the cues into a copy with the narration layer")
+	c.Flags().BoolVar(&video, "video", false, "with --slidev (implied): also record deck.mp4, chapters.txt and captions.srt")
 	completeSpeakFlags(c)
 	_ = c.RegisterFlagCompletionFunc("voice", completeVoices(a))
 	_ = c.MarkFlagDirname("images")
 	return c
 }
 
-func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d script.Deck, lines []line, pictures []string, speed float64, format string, silent time.Duration) error {
+// deckLayout is where everything landed in deck's audio: each slide's start
+// and each line's start, both from the beginning of the deck.
+type deckLayout struct {
+	slideAt []time.Duration
+	lineAt  []time.Duration
+	lengths []time.Duration // each line's length; pauses included
+	total   time.Duration
+	audio   string // the staged deck audio
+	dir     string // the episode folder once published
+}
+
+// deckFinish adds to a staged deck episode before it is published, and
+// returns fields for the result.
+type deckFinish func(ctx context.Context, s *session, staged string, l deckLayout) (output.Obj, error)
+
+func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d script.Deck, lines []line, pictures []string, speed float64, format string, silent time.Duration, finish deckFinish) error {
 	ctx := cmd.Context()
 	s, err := startSession(ctx, a, f.wait)
 	if err != nil {
@@ -138,6 +194,7 @@ func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d scri
 		return output.Fail(nil, "%v", err)
 	}
 
+	layout := deckLayout{lineAt: make([]time.Duration, len(lines)), lengths: sp.lengths}
 	var full []string
 	var marks []audio.Chapter
 	var timings []library.Timing
@@ -160,6 +217,7 @@ func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d scri
 			ps.Image = "slides/" + name
 		}
 		t := library.Timing{Slide: i + 1, Title: slide.Title, Start: ms(at)}
+		layout.slideAt = append(layout.slideAt, at)
 		var length time.Duration
 		if len(idx) == 0 {
 			length = silent
@@ -170,9 +228,12 @@ func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d scri
 			for k, j := range idx {
 				sub[k], subSp.wavs[k], subSp.lengths[k] = lines[j], sp.wavs[j], sp.lengths[j]
 			}
-			clips, _, total, err := timeline(s.stage, sub, subSp)
+			clips, starts, total, err := timeline(s.stage, sub, subSp)
 			if err != nil {
 				return output.Fail(nil, "%v", err)
+			}
+			for k, j := range idx {
+				layout.lineAt[j] = at + starts[k]
 			}
 			wav := filepath.Join(s.stage, fmt.Sprintf("slide-%02d.wav", i+1))
 			if err := audio.Join(ctx, "ffmpeg", s.stage, clips, nil, audio.Meta{}, wav); err != nil {
@@ -222,7 +283,16 @@ func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d scri
 	if err := writeText(filepath.Join(staged, "transcript.md"), transcript(title, titles, lines)); err != nil {
 		return err
 	}
-	if err := deliver(a, f, ep, staged, ep.Audio, output.Obj{}.Set("slides", len(d.Slides))); err != nil {
+	extra := output.Obj{}.Set("slides", len(d.Slides))
+	if finish != nil {
+		layout.total, layout.audio, layout.dir = at, filepath.Join(staged, ep.Audio), filepath.Join(a.paths.Library, ep.ID)
+		more, err := finish(ctx, s, staged, layout)
+		if err != nil {
+			return err
+		}
+		extra = append(extra, more...)
+	}
+	if err := deliver(a, f, ep, staged, ep.Audio, extra); err != nil {
 		return err
 	}
 	return nil

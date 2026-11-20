@@ -62,6 +62,13 @@ func MaybeRunFake() {
 		os.Exit(fakeHelper())
 	case "tts-axi-helper":
 		os.Exit(fakeHelper())
+	case "npm":
+		os.Exit(fakeNpm())
+	case "node":
+		if len(os.Args) > 1 && filepath.Base(os.Args[1]) == "record.mjs" {
+			os.Exit(fakeRecord())
+		}
+		os.Exit(1)
 	}
 }
 
@@ -223,8 +230,8 @@ func SpeechWAV(text string) []byte {
 // test binary under the helper's name, marked as built from the current
 // source), an English bundle carrying the real conditions vector, the cached
 // real duration_delta weights, so every speed works offline, and the
-// multilingual model folder built from the fixture registry. It also puts a
-// fake uv first on PATH.
+// multilingual model folder built from the fixture registry. It also puts
+// fake uv, node and npm first on PATH.
 func Install(t *testing.T, home string) {
 	t.Helper()
 	exe, err := os.Executable()
@@ -251,7 +258,9 @@ func Install(t *testing.T, home string) {
 	must(t, os.WriteFile(filepath.Join(home, "models", engine.BundleName+".duration_delta.f32"), cache, 0o644))
 
 	bin := t.TempDir()
-	must(t, os.Symlink(exe, filepath.Join(bin, "uv")))
+	for _, name := range []string{"uv", "node", "npm"} {
+		must(t, os.Symlink(exe, filepath.Join(bin, name)))
+	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("TTS_AXI_FAKE_BIN", bin)
 

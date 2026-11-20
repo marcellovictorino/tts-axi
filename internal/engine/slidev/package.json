@@ -1,0 +1,14 @@
+{
+  "name": "tts-axi-slidev",
+  "private": true,
+  "description": "The pinned Slidev and recorder tts-axi installs for deck --slidev; doctor --fix runs npm ci on this with the lockfile beside it.",
+  "scripts": {
+    "dev": "slidev --open"
+  },
+  "dependencies": {
+    "@slidev/cli": "53.1.0",
+    "@slidev/theme-default": "0.25.0",
+    "@slidev/theme-seriph": "0.25.0",
+    "playwright-core": "1.65.1"
+  }
+}

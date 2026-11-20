@@ -29,8 +29,12 @@ default speed, installs ptts for French and Portuguese with uv, and downloads
 the French and Portuguese model (122 MB) from Ollama's registry, with no
 account or token; Ollama itself is not needed. It also installs mlx-audio
 and downloads the cloned-voice model (Qwen3-TTS 1.7B Base, 3 GB, from Hugging
-Face, no account needed), which cloned voices (tts-axi voice add) run on. Every download is checked
-against a pinned checksum. It loads no model. Running it again is a no-op.`,
+Face, no account needed), which cloned voices (tts-axi voice add) run on.
+For narrated Slidev decks (tts-axi deck --slidev --video) it installs the
+pinned Slidev with npm (about 560 MB, install scripts off) and downloads
+Chrome for Testing (201 MB); both need Node.js and are skipped without it.
+Every download is checked against a pinned checksum. It loads no model.
+Running it again is a no-op.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := a.load(); err != nil {
@@ -76,6 +80,18 @@ against a pinned checksum. It loads no model. Running it again is a no-op.`,
 					return e.WarmQwen(ctx)
 				})
 				step("downloading the cloned-voice model", func() error { return e.InstallQwen(ctx) })
+				step("installing Slidev for narrated decks", func() error {
+					if _, err := exec.LookPath(e.NodeBin()); err != nil {
+						return nil // reported below as a warning
+					}
+					return e.InstallSlidev(ctx)
+				})
+				step("downloading Chrome for Testing for deck videos", func() error {
+					if _, err := exec.LookPath(e.NodeBin()); err != nil {
+						return nil
+					}
+					return e.InstallChrome(ctx)
+				})
 				step("creating the library", func() error { return a.library().Rebuild() })
 			}
 
@@ -127,6 +143,7 @@ against a pinned checksum. It loads no model. Running it again is a no-op.`,
 			}
 			add(multilingualStatus(e))
 			add(qwenStatus(a, e))
+			add(slidevStatus(e))
 			add(memoryStatus(a))
 			add(libraryStatus(a))
 			missing := missingSkillDirs()
@@ -188,6 +205,21 @@ func qwenStatus(a *App, e *engine.Engine) (string, string, string) {
 		return name, "ok", fmt.Sprintf("Qwen3-TTS 1.7B Base 8-bit through mlx-audio %s; cloned voices: %d", engine.MlxAudioVersion, n)
 	}
 	return name, "warn", "not downloaded (3 GB, no account needed): tts-axi doctor --fix; built-in voices work without it"
+}
+
+// slidevStatus says whether narrated Slidev decks can be recorded.
+func slidevStatus(e *engine.Engine) (string, string, string) {
+	const name = "slidev video"
+	if _, err := exec.LookPath(e.NodeBin()); err != nil {
+		return name, "warn", "Node.js is missing (brew install node), so deck --video cannot record; other decks work"
+	}
+	switch {
+	case e.SlidevInstalled() && e.ChromeInstalled():
+		return name, "ok", "Slidev " + engine.SlidevVersion + " and Chrome for Testing " + engine.ChromeVersion
+	case e.SlidevInstalled():
+		return name, "warn", "Chrome for Testing is not downloaded (201 MB): tts-axi doctor --fix; deck --slidev works without it"
+	}
+	return name, "warn", "Slidev and Chrome for Testing are not installed (about 760 MB): tts-axi doctor --fix; deck --slidev works without them"
 }
 
 func memoryStatus(a *App) (string, string, string) {
