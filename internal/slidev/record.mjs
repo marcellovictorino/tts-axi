@@ -77,8 +77,8 @@ try {
   })
   await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: 1280, maxHeight: 720, everyNthFrame: 1 })
   await page.waitForTimeout(500)
-  const start = Date.now() / 1000
-  await page.evaluate(() => window.__narrate())
+  // The narration's start by the browser's clock, which stamps the frames.
+  const start = await page.evaluate(() => window.__narrate())
   await page.waitForFunction(() => window.__narrationDone === true, null, { timeout: (total + 60) * 1000, polling: 200 })
   await page.waitForTimeout(800) // hold the last frame a moment
   await cdp.send('Page.stopScreencast')

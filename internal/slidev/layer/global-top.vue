@@ -61,10 +61,11 @@ function tick() {
 }
 function play() {
   if (!timeline.value.length) return
-  // Resume where it paused if that is still on the step shown; otherwise
-  // start the step shown from its beginning.
+  // Resume where it paused if that is still on the step shown; otherwise,
+  // or once the narration has finished, start the step shown from its
+  // beginning.
   const here = positionAt(time.value)
-  if (here.no !== nav.currentSlideNo.value || here.clicks !== nav.clicks.value) seek(timeOf(nav.currentSlideNo.value, nav.clicks.value))
+  if (time.value >= total || here.no !== nav.currentSlideNo.value || here.clicks !== nav.clicks.value) seek(timeOf(nav.currentSlideNo.value, nav.clicks.value))
   else seek(time.value)
   playing.value = true
   if (!clockMode) audio.value?.play().catch(() => { playing.value = false })
@@ -84,7 +85,8 @@ watch(() => [nav.currentSlideNo.value, nav.clicks.value], ([no, clicks]) => {
 })
 
 onMounted(() => {
-  ;(window as any).__narrate = () => play()
+  // The recorder lines frames up against this clock: return when it started.
+  ;(window as any).__narrate = () => { const at = Date.now() / 1000; play(); return at }
   window.addEventListener('keydown', e => { if (e.key === 'p') toggle() })
 })
 const pct = computed(() => `${Math.min(100, (time.value / total) * 100)}%`)
