@@ -61,7 +61,11 @@ function tick() {
 }
 function play() {
   if (!timeline.value.length) return
-  seek(timeOf(nav.currentSlideNo.value, nav.clicks.value))
+  // Resume where it paused if that is still on the step shown; otherwise
+  // start the step shown from its beginning.
+  const here = positionAt(time.value)
+  if (here.no !== nav.currentSlideNo.value || here.clicks !== nav.clicks.value) seek(timeOf(nav.currentSlideNo.value, nav.clicks.value))
+  else seek(time.value)
   playing.value = true
   if (!clockMode) audio.value?.play().catch(() => { playing.value = false })
   requestAnimationFrame(tick)

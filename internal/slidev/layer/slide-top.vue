@@ -37,6 +37,8 @@ function aim(clicks: number, tries = 0) {
     return
   }
   setTimeout(() => {
+    // the audience may have moved on, or the slide unmounted, in the meantime
+    if (!root.value || !active.value || $clicks.value !== clicks) return
     const r = rectOf(el), mode = (el as HTMLElement).dataset.mode || 'sweep'
     const from = shown.value ? { ...last } : { x: r.x - 60, y: r.y + r.h + 40 }
     const move = 450

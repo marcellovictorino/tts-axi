@@ -29,6 +29,7 @@ watch($clicks, (c) => {
     return
   }
   if (counted) {
+    cancelAnimationFrame(raf) // a later click ends a count still running
     value.value = props.to
     return
   }
