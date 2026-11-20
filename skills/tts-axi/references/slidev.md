@@ -11,10 +11,14 @@ of effects, look and pacing win over the defaults here.
 
 ## Setup
 
-`tts-axi doctor --fix` installs Slidev 53.1.0 (with the `default` and
-`seriph` themes) and Chrome for Testing into `~/.tts-axi`, pinned. It needs
-Node.js (`brew install node`); `tts-axi doctor` shows a `slidev video` row.
-Plain `tts-axi deck` (no `--slidev`) works without any of this.
+`--slidev` alone needs nothing more: it writes the narrated copy. To record
+it, `tts-axi doctor --fix` installs Slidev 53.1.0 (with the `default` and
+`seriph` themes) and Chrome for Testing into `~/.tts-axi`, pinned. That needs
+Node.js 22.22 or later (`brew install node`); `tts-axi doctor` shows a
+`slidev video` row.
+
+`--video` runs the deck's own code the way `slidev` does: its components,
+`setup/` files, `vite.config` and a local theme. Record only decks you trust.
 
 ## Notes and [click]
 
@@ -51,7 +55,11 @@ and `clicks` into each slide's frontmatter in the copy.
 
 ## What the copy adds
 
-The episode's `slidev/` folder is the deck plus tts-axi's layer. Do not add
+The episode's `slidev/` folder is the deck plus tts-axi's layer. tts-axi
+copies the usual Slidev folders (`components`, `layouts`, `public`, `styles`,
+`setup`, `snippets`, `pages`, `style.css`, the Vite and UnoCSS configs) and
+anything the slides name by a `./` path, such as `./assets/diagram.png` or
+`theme: ./my-theme`. A link that points outside the deck folder is refused. Do not add
 files with these names to your deck folder; tts-axi refuses to overwrite them.
 
 | File | What it does |

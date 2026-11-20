@@ -20,7 +20,7 @@ Apple silicon, macOS 15 or later.
 - ffmpeg, to join and encode audio: `brew install ffmpeg`
 - Xcode Command Line Tools, for `swiftc`, which builds the speech helper: `xcode-select --install`
 - uv, for Portuguese and French: `brew install uv`
-- Node.js, only for narrated Slidev decks: `brew install node`
+- Node.js 22.22 or later, only to record Slidev decks: `brew install node`
 
 ## Install
 
@@ -94,7 +94,7 @@ Here is how it works.
 
 tts-axi speaks each step as its own clip and writes the click times (`start`, `cues`, `clicks`) into each slide's frontmatter in a copy of the deck, in the episode's `slidev/` folder, with a narration player (`p` plays it), a laser pointer, a counter, CSS marks and a scripted terminal. The source deck is never changed. `--video` plays that copy in a hidden Chrome for Testing and writes `deck.mp4` (H.264, chapter marks), `chapters.txt` for a YouTube description and `captions.srt`.
 
-`--slidev` and `--video` need Slidev and Chrome for Testing, which `tts-axi doctor --fix` installs into `~/.tts-axi` (about 760 MB, pinned) when Node.js is present. Plain decks need neither. The skill's [Slidev reference](skills/tts-axi/references/slidev.md) covers the effects, pacing and sharing.
+`--slidev` needs nothing beyond tts-axi itself; presenting the copy live needs Node.js (`npm ci && npm run dev` in its folder). `--video` needs Node.js 22.22 or later, Slidev and Chrome for Testing, which `tts-axi doctor --fix` installs into `~/.tts-axi` (about 760 MB, pinned). Plain decks need none of these. The skill's [Slidev reference](skills/tts-axi/references/slidev.md) covers the effects, pacing and sharing.
 
 ## Voices and speed
 
