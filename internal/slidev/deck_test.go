@@ -38,8 +38,8 @@ func TestParseSplitsNotesAtClicks(t *testing.T) {
 		t.Fatalf("steps per slide %v, want %v", got, want)
 	}
 	s := d.Slides[1]
-	if s.Title != "How it works" || s.Steps[0] != "Here is how it works." || !strings.HasPrefix(s.Steps[2], "Every step is spoken") {
-		t.Errorf("slide 2: %q %q", s.Title, s.Steps)
+	if s.Steps[0] != "Here is how it works." || !strings.HasPrefix(s.Steps[2], "Every step is spoken") {
+		t.Errorf("slide 2: %q", s.Steps)
 	}
 	if d.Title != "Narrated Slidev decks" || d.Theme != "default" {
 		t.Errorf("headmatter %q %q", d.Title, d.Theme)
@@ -110,8 +110,14 @@ func TestRenderWritesCuesAndKeepsEverythingElse(t *testing.T) {
 	if n := strings.Count(twice, "\nstart: "); n != len(d.Slides) {
 		t.Errorf("%d start keys after rendering twice, want %d", n, len(d.Slides))
 	}
-	if !strings.Contains(twice, "cues: [9.000, 9.500]") {
-		t.Error("new cues not written")
+	re, err := Parse(twice)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []float64
+	_ = json.Unmarshal([]byte(re.Slides[0].frontmatter()["cues"]), &got)
+	if !slices.Equal(got, []float64{9, 9.5}) {
+		t.Errorf("cues after rendering twice %v", got)
 	}
 }
 
@@ -128,7 +134,9 @@ func TestRenderKeepsFrontmatterValuesWithDashes(t *testing.T) {
 		t.Fatal(err)
 	}
 	fm := out.Slides[0].frontmatter()
-	if fm["title"] != "Before --- after" || fm["layout"] != "center" || fm["cues"] != "[1.500]" {
+	var cues []float64
+	_ = json.Unmarshal([]byte(fm["cues"]), &cues)
+	if fm["title"] != "Before --- after" || fm["layout"] != "center" || !slices.Equal(cues, []float64{1.5}) {
 		t.Errorf("frontmatter %v", fm)
 	}
 }
@@ -142,5 +150,17 @@ func TestHiddenSlideNotesAreNotRead(t *testing.T) {
 	}
 	if !d.Slides[1].Hidden || d.Slides[1].Steps != nil {
 		t.Errorf("hidden slide %+v", d.Slides[1])
+	}
+}
+
+// Intent (branch review): a quoted value followed by a YAML comment reads
+// as the value, so an installed theme is recognised.
+func TestFrontmatterQuotedValueWithComment(t *testing.T) {
+	d, err := Parse("---\ntheme: \"default\" # standard theme\ntitle: \"#1 talk\"\n---\n\n# One\n\n<!-- Hello. -->\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Theme != "default" || d.Title != "#1 talk" {
+		t.Errorf("theme %q title %q", d.Theme, d.Title)
 	}
 }

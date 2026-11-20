@@ -235,8 +235,19 @@ func (s Slide) frontmatter() map[string]string {
 	return out
 }
 
+// stripComment drops a trailing YAML comment, keeping a # inside quotes.
 func stripComment(v string) string {
-	if i := strings.Index(v, " #"); i >= 0 && !strings.ContainsAny(v[:i], `"'`) {
+	v = strings.TrimSpace(v)
+	if v != "" && (v[0] == '"' || v[0] == '\'') {
+		if end := strings.IndexByte(v[1:], v[0]); end >= 0 {
+			rest := strings.TrimSpace(v[end+2:])
+			if rest == "" || strings.HasPrefix(rest, "#") {
+				return v[:end+2]
+			}
+		}
+		return v
+	}
+	if i := strings.Index(v, " #"); i >= 0 {
 		return v[:i]
 	}
 	return v
