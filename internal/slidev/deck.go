@@ -39,7 +39,9 @@ type Deck struct {
 }
 
 var (
-	frontRE = regexp.MustCompile(`^---.*\n([\s\S]*?)---`)
+	// A frontmatter block runs from the opening --- line to the next line
+	// that is only ---; dashes inside a value do not close it.
+	frontRE = regexp.MustCompile(`^---.*\n((?:.*\n)*?)---[ \t]*(?:\n|$)`)
 	yamlRE  = regexp.MustCompile("^\\s*```ya?ml")
 	// The note is the last comment, when it ends the slide, as Slidev reads it.
 	commentRE = regexp.MustCompile(`(?s)<!--(.*?)-->`)
@@ -167,6 +169,11 @@ func (s *Slide) read(n int) error {
 	}
 	s.Hidden = fm["hide"] == "true" || fm["disabled"] == "true"
 	content = strings.TrimSpace(content)
+	if s.Hidden {
+		// Slidev does not show it, so its notes are never spoken or checked.
+		s.Title = fmt.Sprintf("Slide %d", n)
+		return nil
+	}
 	if ms := commentRE.FindAllStringSubmatchIndex(content, -1); len(ms) > 0 {
 		last := ms[len(ms)-1]
 		if last[1] >= len(content) {
