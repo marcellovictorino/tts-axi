@@ -75,6 +75,11 @@ function stop() {
   playing.value = false
   audio.value?.pause()
 }
+// The audio can end a moment before the planned total; then it is done.
+function finished() {
+  stop()
+  time.value = total
+}
 function toggle() { playing.value ? stop() : play() }
 
 // Manual navigation (arrows, clicks) moves the narration to match.
@@ -93,7 +98,7 @@ const pct = computed(() => `${Math.min(100, (time.value / total) * 100)}%`)
 </script>
 
 <template>
-  <audio v-if="!clockMode" ref="audio" :src="src" preload="auto" />
+  <audio v-if="!clockMode" ref="audio" :src="src" preload="auto" @ended="finished" />
   <div v-if="!hideUi" class="tts-narr" :class="{ on: playing }">
     <button @click="toggle">{{ playing ? '❚❚ Narrating' : '▶ Play narration' }}</button>
     <div class="track"><div class="fill" :style="{ width: pct }" /></div>

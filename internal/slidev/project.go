@@ -46,10 +46,14 @@ var localRefRE = regexp.MustCompile(`(?:^|[\s(\[{"'=:,<])\./([A-Za-z0-9_][^\s)\]
 func (p Project) entries() []string {
 	names := append([]string(nil), projectEntries...)
 	for _, m := range localRefRE.FindAllStringSubmatch(p.Slides, -1) {
-		name := filepath.Clean(filepath.FromSlash(m[1]))
-		first := strings.Split(name, string(filepath.Separator))[0]
-		if name == ".." || strings.HasPrefix(name, ".."+string(filepath.Separator)) ||
-			first == "node_modules" || first == ".git" || contains(names, name) || contains(projectEntries, first) {
+		ref := m[1]
+		if i := strings.IndexAny(ref, "?#"); i >= 0 {
+			ref = ref[:i] // ./diagram.svg#detail names diagram.svg
+		}
+		name := filepath.Clean(filepath.FromSlash(ref))
+		parts := strings.Split(name, string(filepath.Separator))
+		if name == "." || contains(parts, "..") || contains(parts, "node_modules") || contains(parts, ".git") ||
+			contains(names, name) || contains(projectEntries, parts[0]) {
 			continue
 		}
 		names = append(names, name)
@@ -76,10 +80,18 @@ type Project struct {
 	Lock      []byte  // its lockfile
 }
 
+// narrationNames are the files tts-axi writes the narration to.
+var narrationNames = []string{"public/tts-axi-narration.mp3", "public/tts-axi-narration.m4a"}
+
 // LayerConflicts lists the layer files the source deck already has; tts-axi
-// will not overwrite a deck's own player, laser or components.
+// will not overwrite a deck's own player, laser, components or audio.
 func LayerConflicts(sourceDir string) []string {
 	var out []string
+	for _, n := range narrationNames {
+		if _, err := os.Stat(filepath.Join(sourceDir, filepath.FromSlash(n))); err == nil {
+			out = append(out, n)
+		}
+	}
 	_ = fs.WalkDir(layer, "layer", func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err

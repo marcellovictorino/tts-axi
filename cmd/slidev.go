@@ -44,6 +44,17 @@ func parseSlidev(a *App, src, path string, video bool) (slidev.Deck, script.Deck
 		return sd, script.Deck{}, output.Usage([]string{"move the theme folder into the deck's folder and name it ./" + filepath.Base(theme)},
 			"theme %q is outside the deck's folder, so the narrated copy cannot carry it", theme)
 	}
+	if strings.HasPrefix(theme, "./") {
+		// A local theme that links elsewhere could not be copied either.
+		root, err1 := filepath.EvalSymlinks(filepath.Dir(path))
+		real, err2 := filepath.EvalSymlinks(filepath.Join(filepath.Dir(path), theme))
+		if err1 != nil || err2 != nil {
+			return sd, script.Deck{}, output.Usage([]string{"put the theme folder beside slides.md, or use an installed theme"}, "theme folder %s is not in the deck's folder", theme)
+		}
+		if r, err := filepath.Rel(root, real); err != nil || r == ".." || strings.HasPrefix(r, ".."+string(filepath.Separator)) {
+			return sd, script.Deck{}, output.Usage([]string{"copy the theme folder into the deck's folder instead of linking it"}, "theme %s links outside the deck's folder", theme)
+		}
+	}
 	if theme != "" && !strings.HasPrefix(theme, ".") && !strings.HasPrefix(theme, "/") && !contains(slidevThemes, theme) {
 		return sd, script.Deck{}, output.Usage([]string{"installed themes: " + strings.Join(slidevThemes, ", ") + ", or a theme folder by path (./my-theme)"},
 			"theme %q is not installed with tts-axi's Slidev", theme)
