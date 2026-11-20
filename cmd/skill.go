@@ -28,14 +28,16 @@ func skillDirs() []skillTarget {
 	}
 }
 
-// missingSkillDirs lists the agents whose copy of the skill is absent or
-// out of date.
+// missingSkillDirs lists the agents whose copy of the skill (SKILL.md and
+// its references) is absent or out of date.
 func missingSkillDirs() []string {
 	var out []string
 	for _, d := range skillDirs() {
-		dest := filepath.Join(d.dir, "tts-axi", "SKILL.md")
-		if old, err := os.ReadFile(dest); err != nil || string(old) != string(skills.Skill) {
-			out = append(out, d.agent)
+		for _, f := range skills.Files() {
+			if old, err := os.ReadFile(filepath.Join(d.dir, "tts-axi", f.Path)); err != nil || string(old) != string(f.Data) {
+				out = append(out, d.agent)
+				break
+			}
 		}
 	}
 	return out
@@ -52,7 +54,8 @@ func newSkillCmd(a *App) *cobra.Command {
 	install := &cobra.Command{
 		Use:   "install",
 		Short: "Install the tts-axi skill for Claude, Codex and Pi",
-		Long: `Write the embedded SKILL.md to <skills dir>/tts-axi/SKILL.md for each agent:
+		Long: `Write the embedded skill to <skills dir>/tts-axi/ for each agent (SKILL.md
+and references/slidev.md, the Slidev narration guide):
 Claude Code (~/.claude/skills), Codex and other agents reading ~/.agents/skills,
 and Pi (~/.pi/agent/skills; PI_CODING_AGENT_DIR is honoured). --dir installs
 into one folder instead. Running it again only rewrites a changed skill.`,
@@ -64,24 +67,27 @@ into one folder instead. Running it again only rewrites a changed skill.`,
 			}
 			var rows []output.Obj
 			for _, t := range targets {
-				dest := filepath.Join(t.dir, "tts-axi", "SKILL.md")
+				skill := filepath.Join(t.dir, "tts-axi", "SKILL.md")
 				status := "installed"
-				if old, err := os.ReadFile(dest); err == nil {
-					if string(old) == string(skills.Skill) {
-						status = "already installed"
-					} else {
+				if _, err := os.Stat(skill); err == nil {
+					status = "already installed"
+				}
+				for _, f := range skills.Files() {
+					dest := filepath.Join(t.dir, "tts-axi", f.Path)
+					if old, err := os.ReadFile(dest); err == nil && string(old) == string(f.Data) {
+						continue
+					}
+					if status == "already installed" {
 						status = "updated"
 					}
-				}
-				if status != "already installed" {
 					if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 						return output.Fail(nil, "%v", err)
 					}
-					if err := config.WriteFileAtomic(dest, skills.Skill, 0o644); err != nil {
+					if err := config.WriteFileAtomic(dest, f.Data, 0o644); err != nil {
 						return output.Fail(nil, "%v", err)
 					}
 				}
-				rows = append(rows, output.Obj{}.Set("agent", t.agent).Set("status", status).Set("path", dest))
+				rows = append(rows, output.Obj{}.Set("agent", t.agent).Set("status", status).Set("path", skill))
 			}
 			a.printer.Emit(output.Obj{}.Set("skill", rows).
 				Set("help", []string{"agents load skills when they start; restart open sessions to pick it up"}))

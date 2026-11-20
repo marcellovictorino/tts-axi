@@ -22,6 +22,7 @@ listed). Nothing ever prompts.
 | Write to a specific file, not the library | `tts-axi say "text" --out /path/x.mp3` (`.mp3`, `.m4a`, `.wav`) |
 | Several voices, chapters, pauses | `tts-axi render script.md` |
 | Narrate slides from speaker notes | `tts-axi deck slides.md [--images pngs/]` |
+| Narrated Slidev deck, or its video | `tts-axi deck slides.md --slidev` · `--video` (see below) |
 | Pick a voice | `tts-axi voices [--lang en\|pt\|fr]` (the `model` column: phonon, or qwen for a cloned voice) |
 | Add a cloned voice (English) | `tts-axi voice add <name> --clip rec.m4a --text-file words.md`, then `--voice <name>` |
 | Find or delete earlier audio | `tts-axi library` · `tts-axi library rm <episode>` |
@@ -63,6 +64,12 @@ Markdown slides separated by `---` lines (Marp or Slidev). The narration is
 each slide's HTML comment, `<!-- Like this. -->`. The episode folder gets one
 clip per slide, `deck.mp3` with a chapter per slide, `timings.json` and
 `player.html`, which shows each slide while its clip plays and moves on.
+
+**Slidev decks** (`--slidev`, `--video`): read
+[references/slidev.md](references/slidev.md) before writing or narrating
+one. It covers the `[click]` markers in notes, the laser, the components,
+pacing, recording to MP4 and sharing. If the user has a personal
+`slidev-preferences` skill, read that first: its choices win.
 
 ## Rules
 

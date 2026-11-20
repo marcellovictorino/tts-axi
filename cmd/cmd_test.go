@@ -371,11 +371,13 @@ func TestLibraryListAndRemove(t *testing.T) {
 	e.run("library", "rm", "../etc").fails(t, 1, "not an episode id")
 }
 
-// Intent (spec: the skill is installed for Claude, Codex and Pi).
+// Intent (spec: the skill is installed for Claude, Codex and Pi, with the
+// Slidev reference SKILL.md points to).
 func TestSkillInstall(t *testing.T) {
 	e := newEnv(t)
 	r := e.run("skill", "install").ok(t)
-	for _, p := range []string{"home/.claude/skills/tts-axi/SKILL.md", "home/.agents/skills/tts-axi/SKILL.md", "home/.pi/agent/skills/tts-axi/SKILL.md"} {
+	for _, p := range []string{"home/.claude/skills/tts-axi/SKILL.md", "home/.agents/skills/tts-axi/SKILL.md", "home/.pi/agent/skills/tts-axi/SKILL.md",
+		"home/.claude/skills/tts-axi/references/slidev.md", "home/.pi/agent/skills/tts-axi/references/slidev.md"} {
 		if _, err := os.Stat(filepath.Join(e.dir, p)); err != nil {
 			t.Errorf("missing %s", p)
 		}
@@ -385,6 +387,16 @@ func TestSkillInstall(t *testing.T) {
 	}
 	if r := e.run("skill", "install").ok(t); strings.Count(r.out, "already installed") != 3 {
 		t.Errorf("second install should be a no-op:\n%s", r.out)
+	}
+	// A copy from before the reference existed is out of date.
+	if err := os.Remove(filepath.Join(e.dir, "home/.claude/skills/tts-axi/references/slidev.md")); err != nil {
+		t.Fatal(err)
+	}
+	if r := e.run("doctor"); !strings.Contains(r.out, "not installed in claude") {
+		t.Errorf("doctor should see the missing reference:\n%s", r.out)
+	}
+	if r := e.run("skill", "install").ok(t); !strings.Contains(r.out, "claude,updated") {
+		t.Errorf("install should restore the reference:\n%s", r.out)
 	}
 }
 
