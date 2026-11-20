@@ -3,9 +3,11 @@ package slidev
 import (
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -25,12 +27,39 @@ var layer embed.FS
 var Recorder []byte
 
 // projectEntries are the files and folders of a Slidev project that a deck
-// can rely on; they are copied beside the narrated slides.md. Anything else
-// next to the deck (node_modules, dist, other files) is left behind.
+// can rely on; they are copied beside the narrated slides.md, with anything
+// the slides name by a ./ path (a local theme, ./assets/diagram.png).
+// Anything else next to the deck (node_modules, dist, other files) is left
+// behind.
 var projectEntries = []string{
 	"components", "layouts", "public", "styles", "setup", "snippets", "pages",
 	"style.css", "global-bottom.vue", "custom-nav-controls.vue",
 	"vite.config.ts", "vite.config.js", "uno.config.ts", "unocss.config.ts",
+}
+
+// localRefRE finds ./name references in slides: the first path segment.
+var localRefRE = regexp.MustCompile(`(?:^|[\s(\[{"'=:,])\./([A-Za-z0-9_][\w.-]*)`)
+
+// entries is projectEntries plus the top-level names the slides refer to.
+func (p Project) entries() []string {
+	names := append([]string(nil), projectEntries...)
+	for _, m := range localRefRE.FindAllStringSubmatch(p.Slides, -1) {
+		name := m[1]
+		if name == "node_modules" || name == ".git" || contains(names, name) {
+			continue
+		}
+		names = append(names, name)
+	}
+	return names
+}
+
+func contains(list []string, v string) bool {
+	for _, x := range list {
+		if x == v {
+			return true
+		}
+	}
+	return false
 }
 
 // Project is what a narrated deck folder needs.
@@ -68,17 +97,21 @@ func (p Project) Write(dir string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	for _, name := range projectEntries {
-		src := filepath.Join(p.SourceDir, name)
-		if _, err := os.Stat(src); err != nil {
+	root, err := filepath.EvalSymlinks(p.SourceDir)
+	if err != nil {
+		return err
+	}
+	for _, name := range p.entries() {
+		src := filepath.Join(root, name)
+		if _, err := os.Lstat(src); err != nil {
 			continue
 		}
-		if err := copyTree(src, filepath.Join(dir, name)); err != nil {
+		if err := copyTree(root, src, filepath.Join(dir, name)); err != nil {
 			return err
 		}
 	}
 	audioName := "deck" + filepath.Ext(p.Audio)
-	err := fs.WalkDir(layer, "layer", func(path string, d fs.DirEntry, err error) error {
+	err = fs.WalkDir(layer, "layer", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
@@ -111,32 +144,61 @@ func (p Project) Write(dir string) error {
 	return copyFile(p.Audio, filepath.Join(dir, "public", audioName))
 }
 
-// copyTree copies a file or folder; links are copied as the files they
-// point to.
-func copyTree(src, dest string) error {
+// copyTree copies a file or folder from inside root. A link is copied as
+// what it points to, but only when that is inside root too: a deck must not
+// carry a private file from elsewhere on the Mac into a published episode.
+func copyTree(root, src, dest string) error {
 	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		rel, _ := filepath.Rel(src, path)
 		target := filepath.Join(dest, rel)
+		if d.Type()&fs.ModeSymlink != 0 {
+			real, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return err
+			}
+			if r, err := filepath.Rel(root, real); err != nil || r == ".." || strings.HasPrefix(r, ".."+string(filepath.Separator)) {
+				inDeck, _ := filepath.Rel(root, path)
+				return fmt.Errorf("%s links outside the deck folder; copy the file into the deck instead", inDeck)
+			}
+			if strings.HasPrefix(path, real+string(filepath.Separator)) {
+				return nil // a link to a folder holding it would copy forever
+			}
+			return copyTree(root, real, target)
+		}
 		if d.IsDir() {
 			if d.Name() == "node_modules" || d.Name() == ".git" {
 				return filepath.SkipDir
 			}
 			return os.MkdirAll(target, 0o755)
 		}
+		if !d.Type().IsRegular() {
+			return nil // sockets, devices and pipes are not deck files
+		}
 		return copyFile(path, target)
 	})
 }
 
+// copyFile streams src to dest, so a large video in public/ never sits in
+// memory whole.
 func copyFile(src, dest string) error {
-	data, err := os.ReadFile(src)
+	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
+	defer func() { _ = in.Close() }()
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(dest, data, 0o644)
+	out, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		_ = out.Close()
+		return err
+	}
+	return out.Close()
 }
