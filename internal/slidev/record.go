@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -157,7 +158,8 @@ func ConcatList(fr Frames, seconds float64) string {
 }
 
 // Mux joins the frames and the narration into an H.264 MP4 with AAC sound,
-// keeping the narration's chapter marks. The video ends with the narration.
+// keeping the narration's chapter marks. The video ends with the narration:
+// -t, because -shortest overshoots by a second or more behind a held frame.
 // Screencast JPEGs are full range; the video is converted to the TV range
 // players expect.
 func Mux(ctx context.Context, ffmpeg, framesDir string, fr Frames, seconds float64, audioPath, out string) error {
@@ -168,7 +170,7 @@ func Mux(ctx context.Context, ffmpeg, framesDir string, fr Frames, seconds float
 	args := []string{"-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", list, "-i", audioPath,
 		"-map", "0:v", "-map", "1:a", "-map_metadata", "1", "-map_chapters", "1",
 		"-vf", "fps=24,scale=out_range=tv,format=yuv420p", "-pix_fmt", "yuv420p", "-c:v", "libx264", "-crf", "22", "-preset", "medium",
-		"-c:a", "aac", "-b:a", "128k", "-shortest", "-movflags", "+faststart", out}
+		"-c:a", "aac", "-b:a", "128k", "-t", strconv.FormatFloat(seconds, 'f', 3, 64), "-movflags", "+faststart", out}
 	var stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, ffmpeg, args...)
 	cmd.Stderr = &stderr

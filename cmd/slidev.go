@@ -40,6 +40,10 @@ func parseSlidev(a *App, src, path string, video bool) (slidev.Deck, script.Deck
 			"the deck already has %s", strings.Join(c, ", "))
 	}
 	theme := sd.Theme
+	if t := filepath.ToSlash(filepath.Clean(theme)); strings.HasPrefix(theme, "/") || t == ".." || strings.HasPrefix(t, "../") {
+		return sd, script.Deck{}, output.Usage([]string{"move the theme folder into the deck's folder and name it ./" + filepath.Base(theme)},
+			"theme %q is outside the deck's folder, so the narrated copy cannot carry it", theme)
+	}
 	if theme != "" && !strings.HasPrefix(theme, ".") && !strings.HasPrefix(theme, "/") && !contains(slidevThemes, theme) {
 		return sd, script.Deck{}, output.Usage([]string{"installed themes: " + strings.Join(slidevThemes, ", ") + ", or a theme folder by path (./my-theme)"},
 			"theme %q is not installed with tts-axi's Slidev", theme)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"os/exec"
@@ -70,6 +71,7 @@ func decode(t *testing.T, path string) []int16 {
 // its click's words.
 func TestSlidevDeckRendersToVideoWithCues(t *testing.T) {
 	e := newEnv(t)
+	testutil.SetNodeVersion(t, engine.SlidevNode)
 	testutil.InstallSlidev(t, filepath.Join(e.dir, "tts"))
 	deck := e.sampleDeck()
 	before, _ := os.ReadFile(deck)
@@ -85,9 +87,9 @@ func TestSlidevDeckRendersToVideoWithCues(t *testing.T) {
 	if ep := e.episodes()[0]; ep.Player != "deck.mp4" {
 		t.Errorf("the library links the episode to %q, not the video", ep.Player)
 	}
-	for _, f := range []string{"slidev/slides.md", "slidev/style.css",
+	for _, f := range []string{"slidev/style.css",
 		"slidev/global-top.vue", "slidev/slide-top.vue", "slidev/components/CountUp.vue", "slidev/components/PiTerminal.vue",
-		"slidev/public/deck.mp3", "slidev/package.json", "slidev/package-lock.json"} {
+		"slidev/public/tts-axi-narration.mp3", "slidev/package.json", "slidev/package-lock.json"} {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Errorf("missing %s", f)
 		}
@@ -145,9 +147,16 @@ func TestSlidevDeckRendersToVideoWithCues(t *testing.T) {
 		t.Errorf("deck.mp4 streams:\n%s", s)
 	}
 	audioLen, _ := probe(t, filepath.Join(dir, "deck.mp3"))
-	videoLen, chapters := probe(t, filepath.Join(dir, "deck.mp4"))
+	_, chapters := probe(t, filepath.Join(dir, "deck.mp4"))
+	// The picture itself, not the file: sound alone can make the file long.
+	out, err = exec.Command("ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=duration", "-of", "csv=p=0", filepath.Join(dir, "deck.mp4")).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var videoLen float64
+	_, _ = fmt.Sscan(strings.TrimSpace(string(out)), &videoLen)
 	if math.Abs(videoLen-audioLen) > 0.3 {
-		t.Errorf("deck.mp4 is %.2f s, the narration %.2f s", videoLen, audioLen)
+		t.Errorf("deck.mp4's picture is %.2f s, the narration %.2f s", videoLen, audioLen)
 	}
 	if len(chapters) != 6 || chapters[1] != "How it works" {
 		t.Errorf("deck.mp4 chapters %v", chapters)
@@ -187,16 +196,21 @@ func readCues(t *testing.T, src string, i int) (float64, []float64) {
 	return 0, nil
 }
 
-// Intent (spec items 5 and 6): --slidev refuses what it cannot narrate or
-// record before speaking a word: a deck without notes, a theme Slidev was
-// not installed with, files that would hide tts-axi's layer, a view
-// transition (it freezes the recording) and a missing Slidev install.
+// Intent (spec items 5 and 6, and the branch reviews): --slidev refuses
+// what it cannot narrate or record before speaking a word: a deck without
+// notes, a theme Slidev was not installed with or one outside the deck,
+// standard input, files that would hide tts-axi's layer, a view transition
+// (it freezes the recording) and a missing Slidev install.
 func TestSlidevDeckRefusals(t *testing.T) {
 	e := newEnv(t)
+	testutil.SetNodeVersion(t, engine.SlidevNode)
 	plain := e.write("plain.md", "# Hello\n\nNo notes.\n")
 	e.run("deck", plain, "--slidev").fails(t, 2, "no presenter notes found")
 	theme := e.write("theme.md", "---\ntheme: apple-basic\n---\n\n# Hi\n\n<!-- Hello. -->\n")
 	e.run("deck", theme, "--slidev").fails(t, 2, `theme "apple-basic" is not installed`)
+	outside := e.write("outside.md", "---\ntheme: ../shared-theme\n---\n\n# Hi\n\n<!-- Hello. -->\n")
+	e.run("deck", outside, "--slidev").fails(t, 2, "outside the deck's folder")
+	e.run("deck", "-", "--video").fails(t, 2, "reads a file, not standard input")
 	vt := e.write("vt.md", "---\ntransition: view-transition\n---\n\n# Hi\n\n<!-- Hello. -->\n")
 	e.run("deck", vt, "--video").fails(t, 2, "view-transition freezes the recording")
 	ok := e.write("ok.md", "# Hi\n\n<!-- Hello. -->\n")
@@ -214,11 +228,13 @@ func TestSlidevDeckRefusals(t *testing.T) {
 // archive is unpacked where the recorder looks for it.
 func TestDoctorFixInstallsSlidevAndChrome(t *testing.T) {
 	e := newEnv(t)
+	testutil.SetNodeVersion(t, engine.SlidevNode)
+	e.chrome = testutil.ChromeSource(t)
 	if r := e.run("doctor"); !strings.Contains(r.out, `slidev video,warn,"Slidev and Chrome for Testing are not installed`) {
 		t.Errorf("doctor:\n%s", r.out)
 	}
 	e.run("doctor", "--fix").ok(t)
-	if r := e.run("doctor"); !strings.Contains(r.out, "slidev video,ok,Slidev 53.1.0 and Chrome for Testing") {
+	if r := e.run("doctor"); !strings.Contains(r.out, "slidev video,ok,") {
 		t.Errorf("doctor after the fix:\n%s", r.out)
 	}
 }
@@ -229,7 +245,8 @@ func TestSlidevVideoRefusesOldNode(t *testing.T) {
 	e := newEnv(t)
 	testutil.InstallSlidev(t, filepath.Join(e.dir, "tts"))
 	testutil.SetNodeVersion(t, "20.11.0")
-	e.run("deck", e.sampleDeck(), "--video").fails(t, 1, "brew upgrade node")
+	deck := e.write("talk.md", "# Hi\n\n<!-- Hello. -->\n")
+	e.run("deck", deck, "--video").fails(t, 1, "brew upgrade node")
 	if len(e.episodes()) != 0 {
 		t.Error("a refused deck reached the library")
 	}

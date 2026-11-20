@@ -69,6 +69,9 @@ way slidev does: record only decks you trust.
 			if err := a.load(); err != nil {
 				return err
 			}
+			if (slidevMode || video) && args[0] == "-" {
+				return output.Usage([]string{"pass the path to slides.md, so its components and pictures can be copied"}, "--slidev reads a file, not standard input")
+			}
 			src, err := readInput(a, args[0])
 			if err != nil {
 				return err
@@ -88,9 +91,6 @@ way slidev does: record only decks you trust.
 			if slidevMode {
 				if images != "" {
 					return output.Usage([]string{"drop --images: a Slidev deck is shown by Slidev itself"}, "--images does not apply to --slidev")
-				}
-				if args[0] == "-" {
-					return output.Usage([]string{"pass the path to slides.md, so its components and pictures can be copied"}, "--slidev reads a file, not standard input")
 				}
 				if sd, d, err = parseSlidev(a, src, args[0], video); err != nil {
 					return err

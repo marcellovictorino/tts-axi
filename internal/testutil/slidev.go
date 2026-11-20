@@ -32,11 +32,13 @@ import (
 // FakeRecordFPS is how many frames a second the fake recorder writes.
 const FakeRecordFPS = 10
 
-// envNodeVersion is the version the fake node reports; Install sets it to
-// the oldest Node.js Slidev runs on, and a test may lower it.
+// envNodeVersion is the version the fake node reports. Install leaves it
+// empty, so node behaves as missing and doctor skips Slidev; a Slidev test
+// sets it with SetNodeVersion.
 const envNodeVersion = "TTS_AXI_FAKE_NODE_VERSION"
 
-// SetNodeVersion makes the fake node report version v (no leading v).
+// SetNodeVersion makes the fake node report version v (no leading v), such
+// as engine.SlidevNode.
 func SetNodeVersion(t *testing.T, v string) { t.Setenv(envNodeVersion, v) }
 
 func fakeNpm() int {
@@ -84,7 +86,9 @@ func fakeRecord() int {
 		return 1
 	}
 	start := float64(time.Now().UnixMilli()) / 1000
-	n := int((secs+1)*FakeRecordFPS) + 1
+	// Frames stop at half the narration: the browser sends none while the
+	// last slide stays still, so the video must hold the last one.
+	n := int(secs/2*FakeRecordFPS) + 1
 	var stamps []float64
 	for i := range n {
 		img := image.NewRGBA(image.Rect(0, 0, 320, 180))
@@ -104,7 +108,6 @@ func fakeRecord() int {
 	if err := os.WriteFile(filepath.Join(frames, "frames.json"), data, 0o644); err != nil {
 		return 1
 	}
-	fmt.Printf(`{"frames":%d,"end":"/1"}`+"\n", n)
 	return 0
 }
 

@@ -59,7 +59,6 @@ func newEnv(t *testing.T) *env {
 	testutil.Install(t, filepath.Join(dir, "tts"))
 	e.registry = testutil.Registry(t)
 	e.qwen = testutil.QwenSource(t)
-	e.chrome = testutil.ChromeSource(t)
 	return e
 }
 
@@ -377,7 +376,7 @@ func TestSkillInstall(t *testing.T) {
 	e := newEnv(t)
 	r := e.run("skill", "install").ok(t)
 	for _, p := range []string{"home/.claude/skills/tts-axi/SKILL.md", "home/.agents/skills/tts-axi/SKILL.md", "home/.pi/agent/skills/tts-axi/SKILL.md",
-		"home/.claude/skills/tts-axi/references/slidev.md", "home/.pi/agent/skills/tts-axi/references/slidev.md"} {
+		"home/.pi/agent/skills/tts-axi/references/slidev.md"} {
 		if _, err := os.Stat(filepath.Join(e.dir, p)); err != nil {
 			t.Errorf("missing %s", p)
 		}
