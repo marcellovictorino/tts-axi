@@ -33,6 +33,9 @@ const fail = (msg) => {
   process.exit(1)
 }
 server.on('exit', code => fail(`Slidev stopped (exit ${code})`))
+// Whatever goes wrong, the server goes with the recorder.
+process.on('uncaughtException', e => fail(String(e && e.message || e).split('\n')[0]))
+process.on('unhandledRejection', e => fail(String(e && e.message || e).split('\n')[0]))
 
 async function waitForServer() {
   const until = Date.now() + 120_000
@@ -49,8 +52,9 @@ async function waitForServer() {
 await waitForServer()
 // On macOS the hidden window needs 87 px more than the 720 px it shows, and
 // viewport: null lets the page use the window size.
-const browser = await chromium.launch({ headless: true, executablePath: chrome, args: ['--window-size=1280,807', '--autoplay-policy=no-user-gesture-required'] })
+let browser
 try {
+  browser = await chromium.launch({ headless: true, executablePath: chrome, args: ['--window-size=1280,807', '--autoplay-policy=no-user-gesture-required'] })
   const page = await browser.newPage({ viewport: null })
   const url = `${base}/1?clock=1&chrome=0`
   // The first visit makes Vite prepare its dependencies, which can reload the
@@ -82,7 +86,7 @@ try {
   const end = await page.evaluate(() => location.pathname)
   console.log(JSON.stringify({ frames: frames.length, end }))
 } catch (e) {
-  await browser.close().catch(() => {})
+  if (browser) await browser.close().catch(() => {})
   fail(String(e && e.message || e).split('\n')[0])
 }
 await browser.close()

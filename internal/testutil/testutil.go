@@ -65,6 +65,10 @@ func MaybeRunFake() {
 	case "npm":
 		os.Exit(fakeNpm())
 	case "node":
+		if len(os.Args) > 1 && os.Args[1] == "--version" {
+			fmt.Println("v" + os.Getenv(envNodeVersion))
+			os.Exit(0)
+		}
 		if len(os.Args) > 1 && filepath.Base(os.Args[1]) == "record.mjs" {
 			os.Exit(fakeRecord())
 		}
@@ -261,6 +265,7 @@ func Install(t *testing.T, home string) {
 	for _, name := range []string{"uv", "node", "npm"} {
 		must(t, os.Symlink(exe, filepath.Join(bin, name)))
 	}
+	t.Setenv(envNodeVersion, engine.SlidevNode)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("TTS_AXI_FAKE_BIN", bin)
 

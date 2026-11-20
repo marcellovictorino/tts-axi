@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -81,13 +82,13 @@ Running it again is a no-op.`,
 				})
 				step("downloading the cloned-voice model", func() error { return e.InstallQwen(ctx) })
 				step("installing Slidev for narrated decks", func() error {
-					if _, err := exec.LookPath(e.NodeBin()); err != nil {
+					if e.CheckNode(ctx) != nil {
 						return nil // reported below as a warning
 					}
 					return e.InstallSlidev(ctx)
 				})
 				step("downloading Chrome for Testing for deck videos", func() error {
-					if _, err := exec.LookPath(e.NodeBin()); err != nil {
+					if e.CheckNode(ctx) != nil {
 						return nil
 					}
 					return e.InstallChrome(ctx)
@@ -210,8 +211,8 @@ func qwenStatus(a *App, e *engine.Engine) (string, string, string) {
 // slidevStatus says whether narrated Slidev decks can be recorded.
 func slidevStatus(e *engine.Engine) (string, string, string) {
 	const name = "slidev video"
-	if _, err := exec.LookPath(e.NodeBin()); err != nil {
-		return name, "warn", "Node.js is missing (brew install node), so deck --video cannot record; other decks work"
+	if err := e.CheckNode(context.Background()); err != nil {
+		return name, "warn", err.Error() + ", so deck --video cannot record; other decks work"
 	}
 	switch {
 	case e.SlidevInstalled() && e.ChromeInstalled():

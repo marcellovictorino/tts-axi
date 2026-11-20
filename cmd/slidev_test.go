@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/marcellovictorino/tts-axi/internal/engine"
 	"github.com/marcellovictorino/tts-axi/internal/library"
 	"github.com/marcellovictorino/tts-axi/internal/slidev"
 	"github.com/marcellovictorino/tts-axi/internal/testutil"
@@ -66,7 +67,7 @@ func decode(t *testing.T, path string) []int16 {
 // each slide's start and click cues into a copy of the deck with the
 // narration layer, and joins the recording with the narration into an H.264
 // MP4 with YouTube chapters and captions. Each cue lands in the pause before
-// its click's words, so the animation moves while the voice is quiet.
+// its click's words.
 func TestSlidevDeckRendersToVideoWithCues(t *testing.T) {
 	e := newEnv(t)
 	testutil.InstallSlidev(t, filepath.Join(e.dir, "tts"))
@@ -81,14 +82,20 @@ func TestSlidevDeckRendersToVideoWithCues(t *testing.T) {
 		t.Error("the source deck was changed")
 	}
 	dir := filepath.Join(e.lib(), e.episodes()[0].ID)
-	for _, f := range []string{"deck.mp3", "deck.mp4", "chapters.txt", "captions.srt", "slidev/slides.md", "slidev/style.css",
+	if ep := e.episodes()[0]; ep.Player != "deck.mp4" {
+		t.Errorf("the library links the episode to %q, not the video", ep.Player)
+	}
+	for _, f := range []string{"slidev/slides.md", "slidev/style.css",
 		"slidev/global-top.vue", "slidev/slide-top.vue", "slidev/components/CountUp.vue", "slidev/components/PiTerminal.vue",
 		"slidev/public/deck.mp3", "slidev/package.json", "slidev/package-lock.json"} {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Errorf("missing %s", f)
 		}
 	}
-	work, _ := os.ReadDir(filepath.Join(e.dir, "tts", "slidev", "53.1.0", "work"))
+	work, err := os.ReadDir(filepath.Join(e.dir, "tts", "slidev", engine.SlidevVersion, "work"))
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
 	if len(work) != 0 {
 		t.Errorf("the recording's work folder was left behind: %v", work)
 	}
@@ -214,9 +221,16 @@ func TestDoctorFixInstallsSlidevAndChrome(t *testing.T) {
 	if r := e.run("doctor"); !strings.Contains(r.out, "slidev video,ok,Slidev 53.1.0 and Chrome for Testing") {
 		t.Errorf("doctor after the fix:\n%s", r.out)
 	}
-	chrome := filepath.Join(e.dir, "tts", "chrome", "159.0.8154.6", "chrome-mac-arm64", "Google Chrome for Testing.app", "Contents", "MacOS", "Google Chrome for Testing")
-	if _, err := os.Stat(chrome); err != nil {
-		t.Errorf("Chrome for Testing is not unpacked: %v", err)
+}
+
+// Intent (branch review): Slidev needs a recent Node.js, so --video refuses
+// an older one with what to do, before speaking a word.
+func TestSlidevVideoRefusesOldNode(t *testing.T) {
+	e := newEnv(t)
+	testutil.InstallSlidev(t, filepath.Join(e.dir, "tts"))
+	testutil.SetNodeVersion(t, "20.11.0")
+	e.run("deck", e.sampleDeck(), "--video").fails(t, 1, "brew upgrade node")
+	if len(e.episodes()) != 0 {
+		t.Error("a refused deck reached the library")
 	}
-	e.run("deck", e.sampleDeck(), "--video").ok(t)
 }

@@ -32,8 +32,24 @@ import (
 // FakeRecordFPS is how many frames a second the fake recorder writes.
 const FakeRecordFPS = 10
 
+// envNodeVersion is the version the fake node reports; Install sets it to
+// the oldest Node.js Slidev runs on, and a test may lower it.
+const envNodeVersion = "TTS_AXI_FAKE_NODE_VERSION"
+
+// SetNodeVersion makes the fake node report version v (no leading v).
+func SetNodeVersion(t *testing.T, v string) { t.Setenv(envNodeVersion, v) }
+
 func fakeNpm() int {
 	if !slices.Contains(os.Args, "ci") {
+		return 1
+	}
+	// npm ci reads the manifest first: it must declare Slidev.
+	var manifest struct {
+		Dependencies map[string]string `json:"dependencies"`
+	}
+	data, err := os.ReadFile("package.json")
+	if err != nil || json.Unmarshal(data, &manifest) != nil || manifest.Dependencies["@slidev/cli"] == "" {
+		fmt.Fprintln(os.Stderr, "npm ci: package.json is missing or does not declare @slidev/cli")
 		return 1
 	}
 	lock, err := os.ReadFile("package-lock.json")

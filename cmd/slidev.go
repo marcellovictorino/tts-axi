@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -50,8 +49,8 @@ func parseSlidev(a *App, src, path string, video bool) (slidev.Deck, script.Deck
 			return sd, script.Deck{}, output.Usage([]string{"use slide-left, slide-up or fade for a recorded deck"}, "transition: view-transition freezes the recording")
 		}
 		e := a.engine()
-		if _, err := exec.LookPath(e.NodeBin()); err != nil {
-			return sd, script.Deck{}, output.Fail([]string{"brew install node, then tts-axi doctor --fix"}, "--video needs Node.js, which is not installed")
+		if err := e.CheckNode(context.Background()); err != nil {
+			return sd, script.Deck{}, output.Fail([]string{"then run tts-axi doctor --fix", "nothing was spoken"}, "--video needs Node.js %s or later: %v", engine.SlidevNode, err)
 		}
 		if !e.SlidevInstalled() || !e.ChromeInstalled() {
 			return sd, script.Deck{}, output.Fail([]string{"run `tts-axi doctor --fix` once: it installs Slidev " + engine.SlidevVersion + " and Chrome for Testing into ~/.tts-axi", "nothing was spoken"},
@@ -63,7 +62,9 @@ func parseSlidev(a *App, src, path string, video bool) (slidev.Deck, script.Deck
 		if s.Hidden {
 			continue
 		}
-		d.Slides = append(d.Slides, script.Slide{Number: len(d.Slides) + 1, Title: s.Title, Notes: strings.Join(s.Steps, " ")})
+		// The plain player (player.html) shows each slide's title; the
+		// narrated Slidev copy and the video show the slides themselves.
+		d.Slides = append(d.Slides, script.Slide{Number: len(d.Slides) + 1, Title: s.Title, Body: "# " + s.Title, Notes: strings.Join(s.Steps, " ")})
 	}
 	return sd, d, nil
 }
@@ -155,9 +156,9 @@ func finishSlidev(ctx context.Context, a *App, s *session, staged, sourceDir str
 		if guard.IsStop(err) {
 			return nil, output.Fail([]string{"close memory-hungry apps or unload local models, then try again", "nothing was written"}, "%v", err)
 		}
-		return nil, output.Fail([]string{"nothing was written", "the narrated deck still opens with: cd <episode>/slidev && npm ci && npm run dev"}, "%v", err)
+		return nil, output.Fail([]string{"nothing was written", "tts-axi deck --slidev (without --video) still writes the narrated deck"}, "%v", err)
 	}
-	if err := slidev.Mux(ctx, "ffmpeg", frames, fr, l.audio, filepath.Join(staged, "deck.mp4")); err != nil {
+	if err := slidev.Mux(ctx, "ffmpeg", frames, fr, l.total.Seconds(), l.audio, filepath.Join(staged, "deck.mp4")); err != nil {
 		return nil, output.Fail([]string{"nothing was written"}, "joining the video: %v", err)
 	}
 	var captions []slidev.Caption

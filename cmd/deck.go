@@ -56,8 +56,10 @@ bars and a PiTerminal emulation. The original deck is not changed.
 
 --video also records the narrated deck in a hidden Chrome into deck.mp4
 (H.264 with AAC sound and chapter marks), with chapters.txt (YouTube
-chapter lines) and captions.srt. It needs Slidev and Chrome for Testing,
-which tts-axi doctor --fix installs.
+chapter lines) and captions.srt. It needs Node.js 22.22 or later, Slidev
+and Chrome for Testing, which tts-axi doctor --fix installs. Recording runs
+the deck's own code (components, setup/, vite.config, a local theme) the
+way slidev does: record only decks you trust.
 
   tts-axi deck talk.md
   tts-axi deck talk.md --images exported-pngs/ --voice Bryony
@@ -128,8 +130,12 @@ which tts-axi doctor --fix installs.
 			if slidevMode {
 				lines := slidevLines(sd, v)
 				return produceDeck(cmd, a, &f, title, d, lines, nil, speed, format, silent,
-					func(ctx context.Context, s *session, staged string, l deckLayout) (output.Obj, error) {
-						return finishSlidev(ctx, a, s, staged, filepath.Dir(args[0]), sd, lines, l, video)
+					func(ctx context.Context, s *session, staged string, l deckLayout) (output.Obj, string, error) {
+						more, err := finishSlidev(ctx, a, s, staged, filepath.Dir(args[0]), sd, lines, l, video)
+						if err != nil || !video {
+							return more, "", err
+						}
+						return more, "deck.mp4", nil // the library's deck link plays the video
 					})
 			}
 			var lines []line
@@ -166,9 +172,10 @@ type deckLayout struct {
 	dir     string // the episode folder once published
 }
 
-// deckFinish adds to a staged deck episode before it is published, and
-// returns fields for the result.
-type deckFinish func(ctx context.Context, s *session, staged string, l deckLayout) (output.Obj, error)
+// deckFinish adds to a staged deck episode before it is published. It
+// returns fields for the result and, when it made a better way to watch the
+// deck (a video), that file's name for the library's deck link.
+type deckFinish func(ctx context.Context, s *session, staged string, l deckLayout) (output.Obj, string, error)
 
 func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d script.Deck, lines []line, pictures []string, speed float64, format string, silent time.Duration, finish deckFinish) error {
 	ctx := cmd.Context()
@@ -286,9 +293,12 @@ func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d scri
 	extra := output.Obj{}.Set("slides", len(d.Slides))
 	if finish != nil {
 		layout.total, layout.audio, layout.dir = at, filepath.Join(staged, ep.Audio), filepath.Join(a.paths.Library, ep.ID)
-		more, err := finish(ctx, s, staged, layout)
+		more, watch, err := finish(ctx, s, staged, layout)
 		if err != nil {
 			return err
+		}
+		if watch != "" {
+			ep.Player = watch
 		}
 		extra = append(extra, more...)
 	}

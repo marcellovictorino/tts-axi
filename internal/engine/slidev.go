@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/marcellovictorino/tts-axi/internal/config"
 )
@@ -68,6 +70,40 @@ func (e *Engine) npm() string  { return orDefault(e.Npm, "npm") }
 
 // NodeBin is the node that runs Slidev and the recorder.
 func (e *Engine) NodeBin() string { return e.node() }
+
+// SlidevNode is the oldest Node.js the pinned Slidev runs on (its
+// package.json engines field).
+const SlidevNode = "22.22.0"
+
+// CheckNode reports why Node.js cannot run Slidev: missing, or older than
+// SlidevNode. Its error is a sentence for a person.
+func (e *Engine) CheckNode(ctx context.Context) error {
+	out, err := exec.CommandContext(ctx, e.node(), "--version").Output()
+	if err != nil {
+		return fmt.Errorf("no Node.js found (brew install node)")
+	}
+	v := strings.TrimPrefix(strings.TrimSpace(string(out)), "v")
+	if !versionAtLeast(v, SlidevNode) {
+		return fmt.Errorf("the installed Node.js %s is older than %s, which Slidev %s needs (brew upgrade node)", v, SlidevNode, SlidevVersion)
+	}
+	return nil
+}
+
+// versionAtLeast compares dotted version numbers, major first.
+func versionAtLeast(v, min string) bool {
+	a, b := strings.Split(v, "."), strings.Split(min, ".")
+	for i := range b {
+		var x, y int
+		if i < len(a) {
+			x, _ = strconv.Atoi(a[i])
+		}
+		y, _ = strconv.Atoi(b[i])
+		if x != y {
+			return x > y
+		}
+	}
+	return true
+}
 
 // SlidevDir is the npm project Slidev is installed in. Decks are recorded
 // from folders inside it, so Node finds its node_modules by walking up.

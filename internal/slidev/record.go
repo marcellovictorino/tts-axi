@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/marcellovictorino/tts-axi/internal/guard"
@@ -39,6 +40,15 @@ type Frames struct {
 // Chrome with it if memory runs short, and returns the frames it kept.
 func Record(ctx context.Context, r Recording) (Frames, error) {
 	var fr Frames
+	// The recorder runs in the deck folder, so every path it gets is
+	// absolute, even under a relative TTS_AXI_HOME.
+	for _, p := range []*string{&r.Slidev, &r.Chrome, &r.Deck, &r.Frames} {
+		abs, err := filepath.Abs(*p)
+		if err != nil {
+			return fr, err
+		}
+		*p = abs
+	}
 	script := filepath.Join(r.Frames, "record.mjs")
 	if err := os.MkdirAll(r.Frames, 0o755); err != nil {
 		return fr, err
@@ -59,6 +69,11 @@ func Record(ctx context.Context, r Recording) (Frames, error) {
 	cmd.Dir = r.Deck
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	runErr := guard.Run(ctx, r.Sampler, r.Limits, base, cmd)
+	if cmd.Process != nil {
+		// The recorder stops Slidev and Chrome itself; anything left in its
+		// process group (guard.Run made one) is stopped here.
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
 	if guard.IsStop(runErr) || ctx.Err() != nil {
 		return fr, runErr
 	}
@@ -114,8 +129,10 @@ func firstLines(s string, n int) string {
 
 // ConcatList is an ffmpeg concat list that shows each frame for as long as
 // the browser showed it, from the moment narration started. The frame on
-// screen at that moment opens the video.
-func ConcatList(fr Frames) string {
+// screen at that moment opens the video, and the last one stays up until the
+// narration's seconds have played: the browser sends no frames while nothing
+// moves, so a still last slide would otherwise cut the voice short.
+func ConcatList(fr Frames, seconds float64) string {
 	first := 0
 	for i, t := range fr.Frames {
 		if t <= fr.Start {
@@ -128,7 +145,7 @@ func ConcatList(fr Frames) string {
 		if i == first {
 			from = fr.Start
 		}
-		next := fr.Frames[i] + 0.5
+		next := max(fr.Frames[i]+0.5, fr.Start+seconds+0.5)
 		if i+1 < len(fr.Frames) {
 			next = fr.Frames[i+1]
 		}
@@ -143,9 +160,9 @@ func ConcatList(fr Frames) string {
 // keeping the narration's chapter marks. The video ends with the narration.
 // Screencast JPEGs are full range; the video is converted to the TV range
 // players expect.
-func Mux(ctx context.Context, ffmpeg, framesDir string, fr Frames, audioPath, out string) error {
+func Mux(ctx context.Context, ffmpeg, framesDir string, fr Frames, seconds float64, audioPath, out string) error {
 	list := filepath.Join(framesDir, "list.txt")
-	if err := os.WriteFile(list, []byte(ConcatList(fr)), 0o644); err != nil {
+	if err := os.WriteFile(list, []byte(ConcatList(fr, seconds)), 0o644); err != nil {
 		return err
 	}
 	args := []string{"-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", list, "-i", audioPath,
