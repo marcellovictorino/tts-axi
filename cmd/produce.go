@@ -94,6 +94,7 @@ func (f *speakFlags) resolve(a *App) (speed float64, format string, err error) {
 type line struct {
 	script.Segment
 	Voice voices.Voice
+	cue   bool // a Slidev click starts here (a pause line)
 }
 
 // spoken is the result of speaking a list of lines.
@@ -197,8 +198,8 @@ func timeline(stage string, lines []line, sp spoken) (clips []string, starts []t
 			}
 			starts[i] = total
 			clips = append(clips, p)
-			total += l.Pause
-			prev = -2 // a pause replaces the next gap
+			total += l.Pause.Round(10 * time.Millisecond) // what silence wrote
+			prev = -2                                     // a pause replaces the next gap
 			continue
 		}
 		if prev >= 0 {

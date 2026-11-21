@@ -35,6 +35,7 @@ type env struct {
 	now      time.Time
 	registry engine.Registry
 	qwen     engine.QwenSource
+	chrome   engine.ChromeSource
 }
 
 func newEnv(t *testing.T) *env {
@@ -72,7 +73,7 @@ func (e *env) run(args ...string) result {
 	e.t.Helper()
 	var out, errOut bytes.Buffer
 	deps := Deps{Out: &out, Err: &errOut, In: strings.NewReader("Bom dia a todos."), Sampler: e.sampler,
-		Limits: testutil.FastLimits, HTTP: http.DefaultClient, Now: func() time.Time { return e.now }, Registry: e.registry, Qwen: e.qwen}
+		Limits: testutil.FastLimits, HTTP: http.DefaultClient, Now: func() time.Time { return e.now }, Registry: e.registry, Qwen: e.qwen, Chrome: e.chrome}
 	code := Run(context.Background(), deps, args)
 	norm := func(s string) string { return strings.ReplaceAll(s, e.dir, "$TMP") }
 	return result{out: norm(out.String()), err: norm(errOut.String()), code: code}
@@ -278,6 +279,12 @@ func TestDeckMakesClipsTimingsAndPlayer(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "slides/slide-02.mp3")); err == nil {
 		t.Error("a slide without notes got a clip")
 	}
+	// A plain deck stays a plain deck (spec item 5): no Slidev copy, no video.
+	for _, f := range []string{"slidev", "deck.mp4", "chapters.txt"} {
+		if _, err := os.Stat(filepath.Join(dir, f)); err == nil {
+			t.Errorf("a plain deck wrote %s", f)
+		}
+	}
 	var timings []library.Timing
 	data, _ := os.ReadFile(filepath.Join(dir, "timings.json"))
 	if err := json.Unmarshal(data, &timings); err != nil {
@@ -363,11 +370,13 @@ func TestLibraryListAndRemove(t *testing.T) {
 	e.run("library", "rm", "../etc").fails(t, 1, "not an episode id")
 }
 
-// Intent (spec: the skill is installed for Claude, Codex and Pi).
+// Intent (spec: the skill is installed for Claude, Codex and Pi, with the
+// Slidev reference SKILL.md points to).
 func TestSkillInstall(t *testing.T) {
 	e := newEnv(t)
 	r := e.run("skill", "install").ok(t)
-	for _, p := range []string{"home/.claude/skills/tts-axi/SKILL.md", "home/.agents/skills/tts-axi/SKILL.md", "home/.pi/agent/skills/tts-axi/SKILL.md"} {
+	for _, p := range []string{"home/.claude/skills/tts-axi/SKILL.md", "home/.agents/skills/tts-axi/SKILL.md", "home/.pi/agent/skills/tts-axi/SKILL.md",
+		"home/.pi/agent/skills/tts-axi/references/slidev.md"} {
 		if _, err := os.Stat(filepath.Join(e.dir, p)); err != nil {
 			t.Errorf("missing %s", p)
 		}
@@ -377,6 +386,16 @@ func TestSkillInstall(t *testing.T) {
 	}
 	if r := e.run("skill", "install").ok(t); strings.Count(r.out, "already installed") != 3 {
 		t.Errorf("second install should be a no-op:\n%s", r.out)
+	}
+	// A copy from before the reference existed is out of date.
+	if err := os.Remove(filepath.Join(e.dir, "home/.claude/skills/tts-axi/references/slidev.md")); err != nil {
+		t.Fatal(err)
+	}
+	if r := e.run("doctor"); !strings.Contains(r.out, "not installed in claude") {
+		t.Errorf("doctor should see the missing reference:\n%s", r.out)
+	}
+	if r := e.run("skill", "install").ok(t); !strings.Contains(r.out, "claude,updated") {
+		t.Errorf("install should restore the reference:\n%s", r.out)
 	}
 }
 

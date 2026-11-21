@@ -6,6 +6,14 @@ All notable changes to tts-axi are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Narrated Slidev decks. `tts-axi deck slides.md --slidev` splits each slide's notes at `[click]`, speaks one clip per step and writes the click times into a copy of the deck with a narration player, a laser pointer, a counter, CSS marks and a scripted terminal; `--video` records that copy in a hidden Chrome for Testing to an H.264 MP4 with chapters, plus YouTube chapter lines and captions. `tts-axi doctor --fix` installs Slidev and Chrome for Testing into `~/.tts-axi`, pinned, when Node.js is present. A Slidev narration is written beside the deck, to `<name>-narration/` or `--out`, not to the library. The skill gains a Slidev reference.
+
+### Fixed
+
+- Short pauses no longer move later timings: each `[pause]` is written to the nearest 10 ms, and timings, chapters and the player now count that length instead of the one asked for.
+
 ## [0.2.0] - 2026-10-30
 
 ### Added

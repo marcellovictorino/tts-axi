@@ -39,8 +39,9 @@ type Deps struct {
 	Limits    guard.Limits
 	HTTP      *http.Client
 	Now       func() time.Time
-	Registry  engine.Registry   // zero: Ollama's registry and the pinned manifest
-	Qwen      engine.QwenSource // zero: Hugging Face and the pinned files
+	Registry  engine.Registry     // zero: Ollama's registry and the pinned manifest
+	Qwen      engine.QwenSource   // zero: Hugging Face and the pinned files
+	Chrome    engine.ChromeSource // zero: Google's storage and the pinned archive
 }
 
 // App is the state shared by all commands. Paths and settings load lazily so
@@ -99,6 +100,7 @@ func (a *App) engine() *engine.Engine {
 		Limits:            a.deps.Limits,
 		Registry:          a.deps.Registry,
 		Qwen:              a.deps.Qwen,
+		Chrome:            a.deps.Chrome,
 		MultilingualModel: os.Getenv("TTS_AXI_MULTILINGUAL_MODEL"),
 		Progress:          a.printer.Progress,
 	}

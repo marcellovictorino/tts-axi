@@ -6,7 +6,7 @@ Local text to speech for any agent. `tts-axi` turns text, multi-voice scripts an
 
 - **say**: text, a file or standard input, in one voice, into one audio file.
 - **render**: a script with several voices, `## chapters` and `[pause 2s]` marks, into one mp3 or m4a with chapter marks.
-- **deck**: one clip per slide from the speaker notes, plus a player page that turns the slides as the narration plays.
+- **deck**: one clip per slide from the speaker notes, plus a player page that turns the slides as the narration plays. With `--slidev`, a Slidev deck whose clicks follow the voice; with `--video`, an MP4 of it.
 
 Everything lands in one library folder, `~/Music/tts-axi`, with an `index.html` page that plays every episode and a `feed.xml` podcast feed. Delete an episode by deleting its folder.
 
@@ -20,6 +20,7 @@ Apple silicon, macOS 15 or later.
 - ffmpeg, to join and encode audio: `brew install ffmpeg`
 - Xcode Command Line Tools, for `swiftc`, which builds the speech helper: `xcode-select --install`
 - uv, for Portuguese and French: `brew install uv`
+- Node.js 22.22 or later, only to record Slidev decks: `brew install node`
 
 ## Install
 
@@ -72,6 +73,29 @@ Host: A little rain this afternoon.
 ```
 
 A deck for `deck` is Markdown slides separated by `---` (Marp or Slidev), with each slide's narration in an HTML comment, `<!-- like this -->`. Pass `--images` with exported slide pictures to show them in the player instead of the simple built-in rendering.
+
+## Narrated Slidev decks
+
+```bash
+tts-axi deck slides.md --slidev   # a narrated copy of the deck, in slides-narration/
+tts-axi deck slides.md --video    # the same, recorded to deck.mp4
+tts-axi deck slides.md --video --out ~/Desktop/talk   # somewhere else
+```
+
+For a [Slidev](https://sli.dev) deck, mark each animation step in the notes with `[click]`: the words before the first `[click]` play when the slide opens, and the words after each `[click]` play after that click.
+
+```markdown
+<div v-click="1">One clip per step</div>
+
+<!--
+Here is how it works.
+[click] Every step is spoken as its own clip, so the timing is exact.
+-->
+```
+
+tts-axi speaks each step as its own clip and writes the click times (`start`, `cues`, `clicks`) into each slide's frontmatter in a copy of the deck, in the narration folder's `slidev/`, with a narration player (`p` plays it), a laser pointer, a counter, CSS marks and a scripted terminal. The source deck is never changed, and the narration is not added to the library: it belongs with the deck, in `<name>-narration/` beside it (or `--out`), which a later run replaces. `--video` plays that copy in a hidden Chrome for Testing and writes `deck.mp4` (H.264, chapter marks), `chapters.txt` for a YouTube description and `captions.srt`.
+
+`--slidev` needs nothing beyond tts-axi itself; presenting the copy live needs Node.js (`npm ci && npm run dev` in its folder). `--video` needs Node.js 22.22 or later, Slidev and Chrome for Testing, which `tts-axi doctor --fix` installs into `~/.tts-axi` (about 760 MB, pinned). Plain decks need none of these. The skill's [Slidev reference](skills/tts-axi/references/slidev.md) covers the effects, pacing and sharing.
 
 ## Voices and speed
 
@@ -168,8 +192,10 @@ tts-axi (Go)                        flags, scripts, voices, lock, memory guard,
   │                                  runtime, Neural Engine or CPU
   ├── uv run ptts (Python)          Portuguese, French: Phonon 40M multilingual, CPU,
   │                                  weights from Ollama's registry
-  └── uv run mlx-audio (Python)     cloned voices: Qwen3-TTS Base, GPU, weights from
-                                     Hugging Face
+  ├── uv run mlx-audio (Python)     cloned voices: Qwen3-TTS Base, GPU, weights from
+  │                                  Hugging Face
+  └── node record.mjs               deck --video: Slidev and Chrome for Testing,
+                                     recorded on the wall clock
 ```
 
 `doctor --fix` fetches everything a render needs ahead of time: Gradium's runtime and English Core ML bundle from its GitHub release, and the multilingual weights from Ollama's registry, merged into one folder ptts loads. Each download is pinned by SHA-256.
