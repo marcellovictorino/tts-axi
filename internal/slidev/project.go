@@ -41,11 +41,17 @@ var projectEntries = []string{
 // <./path> destination.
 var localRefRE = regexp.MustCompile(`(?:^|[\s(\[{"'=:,<])\./([A-Za-z0-9_][^\s)\]}"'<>]*)`)
 
+// inlineCodeRE is a `code span`; with code blocks and comments (notes) it
+// is text Slidev shows or ignores, never a file it loads.
+var inlineCodeRE = regexp.MustCompile("`[^`\n]+`")
+
 // entries is projectEntries plus the paths the slides refer to: only the
 // file or folder named, never its neighbours, and never outside the deck.
 func (p Project) entries() []string {
 	names := append([]string(nil), projectEntries...)
-	for _, m := range localRefRE.FindAllStringSubmatch(p.Slides, -1) {
+	// A path in a code example or the notes is not loaded, so it is not copied.
+	loaded := inlineCodeRE.ReplaceAllString(commentRE.ReplaceAllString(codeRE.ReplaceAllString(p.Slides, ""), ""), "")
+	for _, m := range localRefRE.FindAllStringSubmatch(loaded, -1) {
 		ref := m[1]
 		if i := strings.IndexAny(ref, "?#"); i >= 0 {
 			ref = ref[:i] // ./diagram.svg#detail names diagram.svg

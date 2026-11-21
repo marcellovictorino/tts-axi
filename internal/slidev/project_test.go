@@ -23,10 +23,11 @@ func project(t *testing.T, slides string) (Project, string) {
 
 // Intent (branch reviews): what the slides name by a ./ path resolves in
 // the narrated copy as it does in the source, a local theme included, and
-// nothing beside it is carried into the episode.
+// nothing beside it, nor a path only a code example or the notes mention,
+// is carried into the episode.
 func TestWriteCopiesWhatTheSlidesReferTo(t *testing.T) {
-	p, dir := project(t, "---\ntheme: ./my-theme\n---\n\n![diagram](<./assets/diagram.png>)\n\n<img src=\"./assets/icon.svg#detail\">\n\n<script src=\"./assets/node_modules/x.js\"></script>\n\n<!-- see ./drafts/x.png -->\n")
-	for _, f := range []string{"assets/diagram.png", "assets/icon.svg", "assets/private.key", "assets/node_modules/x.js", "my-theme/package.json", "public/deck.mp3"} {
+	p, dir := project(t, "---\ntheme: ./my-theme\n---\n\n![diagram](<./assets/diagram.png>)\n\n<img src=\"./assets/icon.svg#detail\">\n\n<script src=\"./assets/node_modules/x.js\"></script>\n\n<!-- see ./drafts/x.png -->\n\nRun `source ./config/.env first`.\n\n```bash\ncp -r ./config ./backup\n```\n")
+	for _, f := range []string{"assets/diagram.png", "assets/icon.svg", "assets/private.key", "assets/node_modules/x.js", "my-theme/package.json", "public/deck.mp3", "drafts/x.png", "config/.env"} {
 		path := filepath.Join(p.SourceDir, f)
 		_ = os.MkdirAll(filepath.Dir(path), 0o755)
 		if err := os.WriteFile(path, []byte(f), 0o644); err != nil {
@@ -47,7 +48,8 @@ func TestWriteCopiesWhatTheSlidesReferTo(t *testing.T) {
 		t.Errorf("the deck's public/deck.mp3 was replaced with %q", b)
 	}
 	// Only what is named: the diagram's neighbour stays behind.
-	for _, f := range []string{"assets/private.key", "assets/node_modules/x.js"} {
+	// Nor what only a code example or the notes mention.
+	for _, f := range []string{"assets/private.key", "assets/node_modules/x.js", "drafts/x.png", "config"} {
 		if _, err := os.Stat(filepath.Join(out, f)); err == nil {
 			t.Errorf("%s was copied", f)
 		}
