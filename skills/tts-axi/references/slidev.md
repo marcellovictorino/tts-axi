@@ -55,7 +55,10 @@ and `clicks` into each slide's frontmatter in the copy.
 
 ## What the copy adds
 
-The episode's `slidev/` folder is the deck plus tts-axi's layer. tts-axi
+tts-axi writes the narration beside the deck, into `<name>-narration/` (or
+`--out <folder>`), not into the audio library: it only makes sense with the
+deck. Running again replaces that folder; tts-axi refuses a folder it did
+not write. Its `slidev/` folder is the deck plus tts-axi's layer. tts-axi
 copies the usual Slidev folders (`components`, `layouts`, `public`, `styles`,
 `setup`, `snippets`, `pages`, `style.css`, the Vite and UnoCSS configs) and
 anything the slides name by a `./` path, such as `./assets/diagram.png` or
@@ -124,7 +127,7 @@ tts-axi deck slides.md --video
 
 tts-axi speaks the deck, then plays the narrated copy in a hidden Chrome for
 Testing (1280 x 720, on the wall clock), captures every frame with its time,
-and joins the frames with the narration. The episode folder gets:
+and joins the frames with the narration. The narration folder gets:
 
 - `deck.mp4`: H.264 and AAC, chapter marks per slide.
 - `chapters.txt`: `0:00 Title` lines for a YouTube description.

@@ -68,7 +68,8 @@ clip per slide, `deck.mp3` with a chapter per slide, `timings.json` and
 **Slidev decks** (`--slidev`, `--video`): read
 [references/slidev.md](references/slidev.md) before writing or narrating
 one. It covers the `[click]` markers in notes, the laser, the components,
-pacing, recording to MP4 and sharing. If the user has a personal
+pacing, recording to MP4 and sharing. The narration goes beside the deck
+(`<name>-narration/`, or `--out`), not into the library. If the user has a personal
 `slidev-preferences` skill, read that first: its choices win.
 
 ## Rules

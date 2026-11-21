@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/marcellovictorino/tts-axi/internal/engine"
 	"github.com/marcellovictorino/tts-axi/internal/guard"
+	"github.com/marcellovictorino/tts-axi/internal/library"
 	"github.com/marcellovictorino/tts-axi/internal/output"
 	"github.com/marcellovictorino/tts-axi/internal/script"
 	"github.com/marcellovictorino/tts-axi/internal/slidev"
@@ -190,4 +192,101 @@ func finishSlidev(ctx context.Context, a *App, s *session, staged, sourceDir str
 	}
 	return extra.Set("video", filepath.Join(l.dir, "deck.mp4")).
 		Set("frames", len(fr.Frames)), nil
+}
+
+// narrationDir is where a Slidev deck's narration is written: out, or
+// <name>-narration beside the deck. It refuses a folder tts-axi did not
+// make, and one holding the deck, since writing replaces the folder.
+func narrationDir(deck, out string) (string, error) {
+	deckDir, err := filepath.Abs(filepath.Dir(deck))
+	if err != nil {
+		return "", output.Fail(nil, "%v", err)
+	}
+	if out == "" {
+		out = filepath.Join(deckDir, strings.TrimSuffix(filepath.Base(deck), filepath.Ext(deck))+"-narration")
+	}
+	dest, err := filepath.Abs(out)
+	if err != nil {
+		return "", output.Fail(nil, "%v", err)
+	}
+	if r, err := filepath.Rel(dest, deckDir); err == nil && (r == "." || !strings.HasPrefix(r, "..")) {
+		return "", output.Usage([]string{"choose an --out folder that does not hold the deck"}, "--out %s holds the deck, and writing the narration replaces it", out)
+	}
+	entries, err := os.ReadDir(dest)
+	switch {
+	case os.IsNotExist(err):
+	case err != nil:
+		return "", output.Usage([]string{"choose another --out folder"}, "%s is not a folder tts-axi can write: %v", out, err)
+	case len(entries) > 0 && !isNarrationDir(dest):
+		return "", output.Usage([]string{"choose another --out folder, or empty this one"}, "%s already holds files tts-axi did not write", out)
+	}
+	return dest, nil
+}
+
+// isNarrationDir reports whether dir is a narration folder tts-axi wrote.
+func isNarrationDir(dir string) bool {
+	for _, f := range []string{"timings.json", "slidev/slides.md"} {
+		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// deliverFolder moves a staged deck episode to dest, replacing an earlier
+// narration there, and prints the result.
+func deliverFolder(a *App, ep library.Episode, staged, dest string, extra output.Obj) error {
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return output.Fail(nil, "%v", err)
+	}
+	// Build the new folder beside dest first, so a failure leaves the old one.
+	next := dest + ".tts-axi-new"
+	_ = os.RemoveAll(next)
+	if err := os.Rename(staged, next); err != nil {
+		// The stage can be on another volume than the deck.
+		if err := copyDir(staged, next); err != nil {
+			_ = os.RemoveAll(next)
+			return output.Fail([]string{"nothing was written"}, "writing %s: %v", dest, err)
+		}
+	}
+	if err := os.RemoveAll(dest); err != nil {
+		return output.Fail(nil, "replacing %s: %v", dest, err)
+	}
+	if err := os.Rename(next, dest); err != nil {
+		return output.Fail(nil, "%v", err)
+	}
+	path := filepath.Join(dest, ep.Audio)
+	result := output.Obj{}.Set("folder", dest).Set("path", path).
+		Set("title", ep.Title).
+		Set("seconds", round1(ep.Seconds)).
+		Set("model", strings.Join(ep.Models, ",")).
+		Set("engine", strings.Join(ep.Engines, ",")).
+		Set("voices", ep.Voices)
+	if ep.Fallback != "" {
+		result = result.Set("fallback", ep.Fallback)
+	}
+	result = append(result, extra...)
+	help := []string{"cd " + shellQuote(filepath.Join(dest, "slidev")) + " && npm ci && npm run dev, then press p to present it narrated"}
+	if _, err := os.Stat(filepath.Join(dest, "deck.mp4")); err == nil {
+		help = append([]string{"open " + shellQuote(filepath.Join(dest, "deck.mp4")) + " to watch it"}, help...)
+	} else {
+		help = append([]string{"afplay " + shellQuote(path) + " to listen"}, help...)
+	}
+	a.printer.Emit(result.Set("help", help))
+	return nil
+}
+
+// copyDir copies a folder of regular files and folders.
+func copyDir(src, dest string) error {
+	return filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(src, p)
+		target := filepath.Join(dest, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		return copyFile(p, target)
+	})
 }

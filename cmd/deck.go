@@ -26,7 +26,7 @@ const slideGap = 600 * time.Millisecond
 
 func newDeckCmd(a *App) *cobra.Command {
 	var f speakFlags
-	var voice, images string
+	var voice, images, outDir string
 	var silent time.Duration
 	var slidevMode, video bool
 	c := &cobra.Command{
@@ -49,10 +49,13 @@ With --slidev the deck is a Slidev slides.md: each slide's presenter notes
 (its last HTML comment) are split at [click] markers, the words before the
 first marker play when the slide opens and each later part after its click.
 Every part is spoken as its own clip, so the click times are exact. The
-episode gets slidev/, a copy of the deck with each slide's start, cues and
-clicks written into its frontmatter, plus tts-axi's narration layer: a
-player (press p), a laser pointer (data-laser), CountUp, marks, spotlight,
-bars and a PiTerminal emulation. The original deck is not changed.
+narration belongs with the deck, so it is not added to the library: it is
+written to a folder beside the deck, <name>-narration/ (or --out), which
+holds deck.mp3, player.html, timings.json and slidev/, a copy of the deck
+with each slide's start, cues and clicks written into its frontmatter, plus
+tts-axi's narration layer: a player (press p), a laser pointer
+(data-laser), CountUp, marks, spotlight, bars and a PiTerminal emulation.
+Running it again replaces that folder. The original deck is not changed.
 
 --video also records the narrated deck in a hidden Chrome into deck.mp4
 (H.264 with AAC sound and chapter marks), with chapters.txt (YouTube
@@ -68,6 +71,9 @@ way slidev does: record only decks you trust.
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := a.load(); err != nil {
 				return err
+			}
+			if outDir != "" && !slidevMode && !video {
+				return output.Usage([]string{"drop --out: a plain deck goes to the library"}, "--out applies to --slidev")
 			}
 			if (slidevMode || video) && args[0] == "-" {
 				return output.Usage([]string{"pass the path to slides.md, so its components and pictures can be copied"}, "--slidev reads a file, not standard input")
@@ -93,6 +99,9 @@ way slidev does: record only decks you trust.
 					return output.Usage([]string{"drop --images: a Slidev deck is shown by Slidev itself"}, "--images does not apply to --slidev")
 				}
 				if sd, d, err = parseSlidev(a, src, args[0], video); err != nil {
+					return err
+				}
+				if outDir, err = narrationDir(args[0], outDir); err != nil {
 					return err
 				}
 			} else if d, err = script.ParseDeck(src); err != nil {
@@ -129,13 +138,9 @@ way slidev does: record only decks you trust.
 			title := firstNonEmpty(f.title, d.Title)
 			if slidevMode {
 				lines := slidevLines(sd, v)
-				return produceDeck(cmd, a, &f, title, d, lines, nil, speed, format, silent,
-					func(ctx context.Context, s *session, staged string, l deckLayout) (output.Obj, string, error) {
-						more, err := finishSlidev(ctx, a, s, staged, filepath.Dir(args[0]), sd, lines, l, video)
-						if err != nil || !video {
-							return more, "", err
-						}
-						return more, "deck.mp4", nil // the library's deck link plays the video
+				return produceDeck(cmd, a, &f, title, d, lines, nil, speed, format, silent, outDir,
+					func(ctx context.Context, s *session, staged string, l deckLayout) (output.Obj, error) {
+						return finishSlidev(ctx, a, s, staged, filepath.Dir(args[0]), sd, lines, l, video)
 					})
 			}
 			var lines []line
@@ -145,7 +150,7 @@ way slidev does: record only decks you trust.
 					lines = append(lines, line{Segment: seg, Voice: v})
 				}
 			}
-			return produceDeck(cmd, a, &f, title, d, lines, pictures, speed, format, silent, nil)
+			return produceDeck(cmd, a, &f, title, d, lines, pictures, speed, format, silent, "", nil)
 		},
 	}
 	f.register(c, false)
@@ -155,6 +160,7 @@ way slidev does: record only decks you trust.
 	c.Flags().DurationVar(&silent, "silent", 4*time.Second, "how long a slide without notes stays up")
 	c.Flags().BoolVar(&slidevMode, "slidev", false, "narrate a Slidev deck: split notes at [click], write the cues into a copy with the narration layer")
 	c.Flags().BoolVar(&video, "video", false, "with --slidev (implied): also record deck.mp4, chapters.txt and captions.srt")
+	c.Flags().StringVarP(&outDir, "out", "o", "", "with --slidev: write the narration into this folder (default: <name>-narration beside the deck)")
 	completeSpeakFlags(c)
 	_ = c.RegisterFlagCompletionFunc("voice", completeVoices(a))
 	_ = c.MarkFlagDirname("images")
@@ -172,12 +178,13 @@ type deckLayout struct {
 	dir     string // the episode folder once published
 }
 
-// deckFinish adds to a staged deck episode before it is published. It
-// returns fields for the result and, when it made a better way to watch the
-// deck (a video), that file's name for the library's deck link.
-type deckFinish func(ctx context.Context, s *session, staged string, l deckLayout) (output.Obj, string, error)
+// deckFinish adds to a staged deck episode before it is published, and
+// returns fields for the result.
+type deckFinish func(ctx context.Context, s *session, staged string, l deckLayout) (output.Obj, error)
 
-func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d script.Deck, lines []line, pictures []string, speed float64, format string, silent time.Duration, finish deckFinish) error {
+// produceDeck speaks a deck and publishes it to the library, or, when
+// outDir is set, writes the episode folder there instead.
+func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d script.Deck, lines []line, pictures []string, speed float64, format string, silent time.Duration, outDir string, finish deckFinish) error {
 	ctx := cmd.Context()
 	s, err := startSession(ctx, a, f.wait)
 	if err != nil {
@@ -293,14 +300,17 @@ func produceDeck(cmd *cobra.Command, a *App, f *speakFlags, title string, d scri
 	extra := output.Obj{}.Set("slides", len(d.Slides))
 	if finish != nil {
 		layout.total, layout.audio, layout.dir = at, filepath.Join(staged, ep.Audio), filepath.Join(a.paths.Library, ep.ID)
-		more, watch, err := finish(ctx, s, staged, layout)
+		if outDir != "" {
+			layout.dir = outDir
+		}
+		more, err := finish(ctx, s, staged, layout)
 		if err != nil {
 			return err
 		}
-		if watch != "" {
-			ep.Player = watch
-		}
 		extra = append(extra, more...)
+	}
+	if outDir != "" {
+		return deliverFolder(a, ep, staged, outDir, extra)
 	}
 	if err := deliver(a, f, ep, staged, ep.Audio, extra); err != nil {
 		return err

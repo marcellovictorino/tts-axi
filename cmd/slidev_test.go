@@ -83,10 +83,11 @@ func TestSlidevDeckRendersToVideoWithCues(t *testing.T) {
 	if !bytes.Equal(before, after) {
 		t.Error("the source deck was changed")
 	}
-	dir := filepath.Join(e.lib(), e.episodes()[0].ID)
-	if ep := e.episodes()[0]; ep.Player != "deck.mp4" {
-		t.Errorf("the library links the episode to %q, not the video", ep.Player)
+	// The narration belongs with the deck: beside it, not in the library.
+	if n := len(e.episodes()); n != 0 {
+		t.Errorf("the narration added %d episodes to the library", n)
 	}
+	dir := filepath.Join(e.dir, "sample", "slides-narration")
 	for _, f := range []string{"slidev/style.css",
 		"slidev/global-top.vue", "slidev/slide-top.vue", "slidev/components/CountUp.vue", "slidev/components/PiTerminal.vue",
 		"slidev/public/tts-axi-narration.mp3", "slidev/package.json", "slidev/package-lock.json"} {
@@ -227,6 +228,42 @@ func TestSlidevDeckRefusals(t *testing.T) {
 	}
 }
 
+// Intent (the captain's ask: a deck's narration only makes sense with the
+// deck, so it must not fill the audio library): --slidev writes beside the
+// deck or to --out, replaces its own earlier narration there, and never
+// replaces a folder it did not write or one holding the deck.
+func TestSlidevNarrationGoesWithTheDeck(t *testing.T) {
+	e := newEnv(t)
+	deck := e.write("talk.md", "# Hi\n\n<!--\nHello.\n[click] There.\n-->\n")
+	out := filepath.Join(e.dir, "share", "talk")
+	r := e.run("deck", deck, "--slidev", "--out", out).ok(t)
+	if !strings.Contains(r.out, "folder: $TMP/share/talk") {
+		t.Errorf("output:\n%s", r.out)
+	}
+	if _, err := os.Stat(filepath.Join(out, "slidev", "slides.md")); err != nil {
+		t.Fatal(err)
+	}
+	stale := filepath.Join(out, "stale.txt")
+	_ = os.WriteFile(stale, []byte("x"), 0o644)
+	e.run("deck", deck, "--slidev", "--out", out).ok(t)
+	if _, err := os.Stat(stale); err == nil {
+		t.Error("running again kept the earlier folder's files")
+	}
+	if n := len(e.episodes()); n != 0 {
+		t.Errorf("%d episodes in the library", n)
+	}
+
+	mine := filepath.Join(e.dir, "mine")
+	_ = os.MkdirAll(mine, 0o755)
+	_ = os.WriteFile(filepath.Join(mine, "notes.txt"), []byte("keep"), 0o644)
+	e.run("deck", deck, "--slidev", "--out", mine).fails(t, 2, "already holds files tts-axi did not write")
+	if b, _ := os.ReadFile(filepath.Join(mine, "notes.txt")); string(b) != "keep" {
+		t.Error("a folder tts-axi did not write was changed")
+	}
+	e.run("deck", deck, "--slidev", "--out", e.dir).fails(t, 2, "holds the deck")
+	e.run("deck", deck, "--out", out).fails(t, 2, "--out applies to --slidev")
+}
+
 // Intent (spec item 5: doctor --fix installs Slidev and Chrome for Testing
 // into tts-axi's own folder, from pinned downloads): before the fix doctor
 // warns and --video refuses; after it doctor reports both and the Chrome
@@ -264,7 +301,7 @@ func TestSlidevCuesStayOnTheSoundAfterPauses(t *testing.T) {
 	e := newEnv(t)
 	deck := e.write("talk.md", "# One\n\n<!--\nHello there."+strings.Repeat(" [pause 64ms]", 50)+" Still here.\n[click] And then the point.\n-->\n")
 	e.run("deck", deck, "--slidev").ok(t)
-	dir := filepath.Join(e.lib(), e.episodes()[0].ID)
+	dir := filepath.Join(e.dir, "talk-narration")
 	src, _ := os.ReadFile(filepath.Join(dir, "slidev", "slides.md"))
 	start, cues := readCues(t, string(src), 0)
 	pcm := decode(t, filepath.Join(dir, "deck.mp3"))

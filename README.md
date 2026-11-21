@@ -77,8 +77,9 @@ A deck for `deck` is Markdown slides separated by `---` (Marp or Slidev), with e
 ## Narrated Slidev decks
 
 ```bash
-tts-axi deck slides.md --slidev   # a narrated copy of the deck
+tts-axi deck slides.md --slidev   # a narrated copy of the deck, in slides-narration/
 tts-axi deck slides.md --video    # the same, recorded to deck.mp4
+tts-axi deck slides.md --video --out ~/Desktop/talk   # somewhere else
 ```
 
 For a [Slidev](https://sli.dev) deck, mark each animation step in the notes with `[click]`: the words before the first `[click]` play when the slide opens, and the words after each `[click]` play after that click.
@@ -92,7 +93,7 @@ Here is how it works.
 -->
 ```
 
-tts-axi speaks each step as its own clip and writes the click times (`start`, `cues`, `clicks`) into each slide's frontmatter in a copy of the deck, in the episode's `slidev/` folder, with a narration player (`p` plays it), a laser pointer, a counter, CSS marks and a scripted terminal. The source deck is never changed. `--video` plays that copy in a hidden Chrome for Testing and writes `deck.mp4` (H.264, chapter marks), `chapters.txt` for a YouTube description and `captions.srt`.
+tts-axi speaks each step as its own clip and writes the click times (`start`, `cues`, `clicks`) into each slide's frontmatter in a copy of the deck, in the narration folder's `slidev/`, with a narration player (`p` plays it), a laser pointer, a counter, CSS marks and a scripted terminal. The source deck is never changed, and the narration is not added to the library: it belongs with the deck, in `<name>-narration/` beside it (or `--out`), which a later run replaces. `--video` plays that copy in a hidden Chrome for Testing and writes `deck.mp4` (H.264, chapter marks), `chapters.txt` for a YouTube description and `captions.srt`.
 
 `--slidev` needs nothing beyond tts-axi itself; presenting the copy live needs Node.js (`npm ci && npm run dev` in its folder). `--video` needs Node.js 22.22 or later, Slidev and Chrome for Testing, which `tts-axi doctor --fix` installs into `~/.tts-axi` (about 760 MB, pinned). Plain decks need none of these. The skill's [Slidev reference](skills/tts-axi/references/slidev.md) covers the effects, pacing and sharing.
 
