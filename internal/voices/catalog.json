@@ -185,6 +185,131 @@
   "description": "Playful, upbeat and Gen Z energy voice with a standard American accent. Perfect for engaging conversations!"
  },
  {
+  "name": "Alba",
+  "lang": "es",
+  "description": "A sweet, expressive young Castilian Spanish voice, soft and girly with lively emphasis, sparky and to the point for efficient support."
+ },
+ {
+  "name": "Aldo",
+  "lang": "es",
+  "description": "Forward, close-miked energy with crisp consonant attack and pitch that climbs and drops across a line."
+ },
+ {
+  "name": "Alicia",
+  "lang": "es",
+  "description": "Rounded and softly resonant, settling low in the range, with phrases that land gently and an apology that sounds genuinely meant."
+ },
+ {
+  "name": "Azucena",
+  "lang": "es",
+  "description": "Weighted lower register with steady authority that comes from calm rather than volume, and diction that survives raised playback speed."
+ },
+ {
+  "name": "Borja",
+  "lang": "es",
+  "description": "Resonant and punchy, driving a rhythmic read that cuts over a loud music bed and lands squarely on the brand name."
+ },
+ {
+  "name": "Candela",
+  "lang": "es",
+  "description": "An enthusiastic, bubbly young Castilian Spanish voice, animated like a beauty guru mid-tutorial, adding fun energy to customer care."
+ },
+ {
+  "name": "Celia",
+  "lang": "es",
+  "description": "Sparky and forward, light on the air but firm on every consonant, landing the final line without pushing."
+ },
+ {
+  "name": "Danae",
+  "lang": "es",
+  "description": "Sparky and punchy, with a light, airy top end, clean attack on every word and a brisk rhythm that lands the brand name."
+ },
+ {
+  "name": "Guillermo",
+  "lang": "es",
+  "description": "Low and resonant, settled in tone, with phrases that land softly and an apology that sounds genuinely meant."
+ },
+ {
+  "name": "Iker",
+  "lang": "es",
+  "description": "An easy-going, friendly Peninsular Spanish adult voice that puts callers instantly at ease. Great for onboarding assistants and warm concierge interactions."
+ },
+ {
+  "name": "Izan",
+  "lang": "es",
+  "description": "Crisp consonant attack, forward energy and a punchy delivery that sits on top of a music bed."
+ },
+ {
+  "name": "Jimena",
+  "lang": "es",
+  "description": "Crisp consonant attack and a forward, sparky delivery that sits over a music bed, with pitch that lifts and drops inside a single line."
+ },
+ {
+  "name": "Lalo",
+  "lang": "es",
+  "description": "Fuller and rounder low end, concise phrasing and a decisive drop on the last line, with range to pull back for one clause and push again."
+ },
+ {
+  "name": "Leonel",
+  "lang": "es",
+  "description": "Velvety and even tempered, sincere when an apology is due and genuinely pleased when the news is good."
+ },
+ {
+  "name": "Lucía-Sol",
+  "lang": "es",
+  "description": "A bouncy, chipper young Castilian Spanish voice with a cute upward lilt, bringing playful energy to friendly reception and support."
+ },
+ {
+  "name": "Marcos",
+  "lang": "es",
+  "description": "A confident, upbeat Peninsular Spanish adult voice with infectious energy. Perfect for proactive assistants and motivating customer success calls."
+ },
+ {
+  "name": "Nerea",
+  "lang": "es",
+  "description": "Rounded, lightly resonant tone with gentle lift at the end of phrases and an even, relaxed delivery."
+ },
+ {
+  "name": "Nico",
+  "lang": "es",
+  "description": "Sparky and to the point, with clean articulation that cuts through a loud music bed and a brisk rhythm that follows the copy's beats."
+ },
+ {
+  "name": "Noa",
+  "lang": "es",
+  "description": "A glossy, confident young Castilian Spanish voice with fast, girly charm and warmth, a bubbly assistant that makes every chat sparkle."
+ },
+ {
+  "name": "Nuno",
+  "lang": "es",
+  "description": "Resonant and easy-going, with a relaxed mid-range delivery and a hint of playful lift at the end of phrases."
+ },
+ {
+  "name": "Rebeca",
+  "lang": "es",
+  "description": "Fuller and grounded in the low end, with hard consonant edges and a decisive punch saved for the brand name."
+ },
+ {
+  "name": "Regina",
+  "lang": "es",
+  "description": "A confident, upbeat Mexican Spanish adult voice with the natural assurance of a closer. Ideal for proactive assistants and sales-led customer interactions."
+ },
+ {
+  "name": "Ulises",
+  "lang": "es",
+  "description": "Low and resonant, with a settled delivery and consonants that survive a handset."
+ },
+ {
+  "name": "Ximena",
+  "lang": "es",
+  "description": "A playful, expressive Mexican Spanish adult voice that turns everyday moments into stories. Great for engaging assistants and personable conversational AI."
+ },
+ {
+  "name": "Yael",
+  "lang": "es",
+  "description": "Close, ringing tone with a grin in it, dropping right down for one clause then climbing into the payoff."
+ },
+ {
   "name": "Arnaud",
   "lang": "fr",
   "description": "Low and firm, quick to the point, consonants holding their shape at phone bandwidth."

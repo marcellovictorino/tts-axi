@@ -17,7 +17,7 @@ func newVoicesCmd(a *App) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "voices",
 		Short: "List the voices: your defaults first, then the catalog",
-		Long: `List Phonon's catalog voices for English, Portuguese and French, then your
+		Long: `List Phonon's catalog voices for English, Portuguese, French and Spanish, then your
 cloned voices (model qwen; see "tts-axi voice add"). The model column says
 which speaks: phonon for every built-in voice, qwen only for a cloned one.
 
@@ -82,7 +82,7 @@ the next ones go to a script's second, third... speaker. Change the order in
 			return nil
 		},
 	}
-	c.Flags().StringVar(&lang, "lang", "", "only this language: en, pt or fr")
+	c.Flags().StringVar(&lang, "lang", "", "only this language: en, pt, fr or es")
 	_ = c.RegisterFlagCompletionFunc("lang", fixed(voices.Languages...))
 	c.Flags().BoolVar(&full, "full", false, "show whole descriptions")
 	return c

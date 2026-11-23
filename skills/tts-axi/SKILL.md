@@ -1,12 +1,12 @@
 ---
 name: tts-axi
-description: Turn text, a multi-voice script or a slide deck's speaker notes into audio on this Mac with the tts-axi CLI (Phonon, local, English, Portuguese and French). Use when asked to read something aloud, narrate a deck, make a podcast or briefing episode, or produce an audio file from text.
+description: Turn text, a multi-voice script or a slide deck's speaker notes into audio on this Mac with the tts-axi CLI (Phonon, local, English, Portuguese, French and Spanish). Use when asked to read something aloud, narrate a deck, make a podcast or briefing episode, or produce an audio file from text.
 ---
 
 # tts-axi
 
 `tts-axi` speaks text locally with Phonon: English on the Neural Engine (CPU
-fallback), Portuguese and French on the CPU. Results go into a library folder
+fallback), Portuguese, French and Spanish on the CPU. Results go into a library folder
 (`~/Music/tts-axi`) with an `index.html` player page and a `feed.xml`, unless
 you pass `--out`. Every command prints compact
 [TOON](https://github.com/toon-format/toon) when piped, ending with `help[n]:`
@@ -23,13 +23,13 @@ listed). Nothing ever prompts.
 | Several voices, chapters, pauses | `tts-axi render script.md` |
 | Narrate slides from speaker notes | `tts-axi deck slides.md [--images pngs/]` |
 | Narrated Slidev deck, or its video | `tts-axi deck slides.md --slidev` · `--video` (see below) |
-| Pick a voice | `tts-axi voices [--lang en\|pt\|fr]` (the `model` column: phonon, or qwen for a cloned voice) |
+| Pick a voice | `tts-axi voices [--lang en\|pt\|fr\|es]` (the `model` column: phonon, or qwen for a cloned voice) |
 | Add a cloned voice (English) | `tts-axi voice add <name> --clip rec.m4a --text-file words.md`, then `--voice <name>` |
 | Find or delete earlier audio | `tts-axi library` · `tts-axi library rm <episode>` |
 | Something is wrong | `tts-axi doctor` (`tts-axi doctor --fix` installs the runtime) |
 
 Defaults: English voice Hugh (then Bryony), Portuguese Davi (then Kauã,
-Manuela-Lu, Débora), French Augustin (then Coralie), speed `0.15` (a little
+Manuela-Lu, Débora), French Augustin (then Coralie), Spanish Noa (then Marcos, Candela, Iker), speed `0.15` (a little
 slower than the model's pace). `--voice`, `--lang`, `--speed` and `--title`
 override them.
 
