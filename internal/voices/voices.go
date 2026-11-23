@@ -1,5 +1,5 @@
 // Package voices knows Phonon's voice catalog for English, French,
-// Portuguese and Spanish, the default voice order per language, and how script speakers
+// Portuguese, Spanish and German, the default voice order per language, and how script speakers
 // are matched to voices.
 package voices
 
@@ -17,7 +17,7 @@ import (
 )
 
 // catalogJSON is a snapshot of Phonon's catalog (ptts.catalog_voices(), ptts
-// 0.4.1) for the four supported languages. //go:embed compiles the file into
+// 0.4.1) for the five supported languages. //go:embed compiles the file into
 // the binary.
 //
 //go:embed catalog.json
@@ -46,7 +46,7 @@ func (v Voice) Model() string {
 }
 
 // Languages are the supported language codes, in display order.
-var Languages = []string{"en", "pt", "fr", "es"}
+var Languages = []string{"en", "pt", "fr", "es", "de"}
 
 // Defaults is the voice order per language: the first is the default voice,
 // the next ones go to the second, third... speaker of a script.
@@ -55,6 +55,7 @@ var Defaults = map[string][]string{
 	"pt": {"Davi", "Kauã", "Manuela-Lu", "Débora"},
 	"fr": {"Augustin", "Coralie"},
 	"es": {"Noa", "Marcos", "Candela", "Iker"},
+	"de": {"Henrik", "Annika", "Anton", "Josefine"},
 }
 
 var catalog []Voice

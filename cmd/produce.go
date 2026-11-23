@@ -45,7 +45,7 @@ type speakFlags struct {
 }
 
 func (f *speakFlags) register(c *cobra.Command, withOut bool) {
-	c.Flags().StringVar(&f.lang, "lang", "", "language: en, pt, fr or es (default: from the voice or the front matter, else en)")
+	c.Flags().StringVar(&f.lang, "lang", "", "language: en, pt, fr, es or de (default: from the voice or the front matter, else en)")
 	c.Flags().StringVar(&f.speed, "speed", "", "Phonon duration_delta: 0 is the model's pace, positive is slower (default 0.15)")
 	c.Flags().StringVar(&f.engine, "engine", "auto", "auto (Neural Engine, CPU fallback) or cpu")
 	c.Flags().StringVar(&f.title, "title", "", "episode title (default: from the text)")

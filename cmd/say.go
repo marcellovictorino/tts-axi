@@ -26,7 +26,7 @@ func newSayCmd(a *App) *cobra.Command {
 The text is split into paragraphs; Markdown marks are dropped. The result goes
 into the library as an episode, or to --out. The default voice is the first
 default of the language (Hugh in English, Davi in Portuguese, Augustin in
-French, Noa in Spanish).
+French, Noa in Spanish, Henrik in German).
 
   tts-axi say "Good morning. Here is your briefing."
   tts-axi say --file notes.md --title "Release notes"

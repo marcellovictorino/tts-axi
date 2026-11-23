@@ -59,7 +59,7 @@ smoke:
     echo "memory after: $(sysctl -n kern.memorystatus_vm_pressure_level); swap $(sysctl -n vm.swapusage | awk '{print $6}')"
     echo "smoke ok; listen with: afplay '$audio'"
 
-# Speak a sample sentence in every catalog voice of a language (en, pt, fr or es) into one library episode, a chapter per voice.
+# Speak a sample sentence in every catalog voice of a language (en, pt, fr, es or de) into one library episode, a chapter per voice.
 samples lang="en":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -68,7 +68,8 @@ samples lang="en":
       pt) line="Olá, eu sou NAME. Aqui está o seu resumo de hoje: três reuniões, duas faturas e um pouco de chuva à tarde." ;;
       fr) line="Bonjour, je suis NAME. Voici votre programme du jour : trois réunions, deux factures et un peu de pluie cet après-midi." ;;
       es) line="Hola, soy NAME. Este es tu resumen de hoy: tres reuniones, dos facturas y un poco de lluvia por la tarde." ;;
-      *) echo "samples: lang must be en, pt, fr or es"; exit 2 ;;
+      de) line="Hallo, ich bin NAME. Hier ist deine Übersicht für heute: drei Termine, zwei Rechnungen und am Nachmittag ein bisschen Regen." ;;
+      *) echo "samples: lang must be en, pt, fr, es or de"; exit 2 ;;
     esac
     script="$(mktemp -d)/voice-samples-{{lang}}.md"
     printf -- '---\ntitle: Voice samples ({{lang}})\nlang: {{lang}}\n---\n' > "$script"

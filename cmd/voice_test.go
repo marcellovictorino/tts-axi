@@ -92,7 +92,7 @@ func TestClonedVoiceIsListedAndCompleted(t *testing.T) {
 	e := newEnv(t)
 	e.addVoice()
 	r := e.run("voices").ok(t)
-	if !strings.Contains(r.out, "voices[90]{name,lang,default,model,engine,description}:") ||
+	if !strings.Contains(r.out, "voices[103]{name,lang,default,model,engine,description}:") ||
 		!strings.Contains(r.out, "\n  mf,en,\"\",qwen,qwen-mlx,") && !strings.Contains(r.out, "\n  mf,en,,qwen,qwen-mlx,") {
 		t.Errorf("voices:\n%s", r.out)
 	}

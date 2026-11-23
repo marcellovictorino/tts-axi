@@ -105,8 +105,9 @@ tts-axi speaks each step as its own clip and writes the click times (`start`, `c
 | Portuguese (Brazil) | Davi, Kauã, Manuela-Lu, Débora | Phonon 40M multilingual on the CPU |
 | French | Augustin, Coralie | Phonon 40M multilingual on the CPU |
 | Spanish | Noa, Marcos, Candela, Iker | Phonon 40M multilingual on the CPU |
+| German | Henrik, Annika, Anton, Josefine | Phonon 40M multilingual on the CPU |
 
-The first voice speaks by default; script speakers take the others in order. `tts-axi voices` lists all 89 catalog voices, and `just samples pt` (or `en`, `fr`, `es`) speaks one sentence in every voice of a language into a library episode with a chapter per voice, so you can pick by ear. The samples are made on your Mac; the repository keeps no audio. The default speed is Phonon's `duration_delta` at `0.15`, a little slower than the model's own pace; `--speed` changes it.
+The first voice speaks by default; script speakers take the others in order. `tts-axi voices` lists all 102 catalog voices, and `just samples pt` (or `en`, `fr`, `es`, `de`) speaks one sentence in every voice of a language into a library episode with a chapter per voice, so you can pick by ear. The samples are made on your Mac; the repository keeps no audio. The default speed is Phonon's `duration_delta` at `0.15`, a little slower than the model's own pace; `--speed` changes it.
 
 ## Cloned voices
 
@@ -125,7 +126,7 @@ tts-axi deck talk.md --voice mf
 
 ## Portuguese and French
 
-Portuguese, French and Spanish use Gradium's [phonon-40m-multilingual](https://huggingface.co/gradium/phonon-40m-multilingual) model (CC BY-NC 4.0, non-commercial) through ptts, Gradium's Python runtime, on the CPU. `tts-axi doctor --fix` downloads it once, with nothing to set up: `tts-axi doctor` then shows `multilingual model: ok`. Try `tts-axi say "Bom dia" --lang pt`.
+Portuguese, French, Spanish and German use Gradium's [phonon-40m-multilingual](https://huggingface.co/gradium/phonon-40m-multilingual) model (CC BY-NC 4.0, non-commercial) through ptts, Gradium's Python runtime, on the CPU. `tts-axi doctor --fix` downloads it once, with nothing to set up: `tts-axi doctor` then shows `multilingual model: ok`. Try `tts-axi say "Bom dia" --lang pt`.
 
 **Where the model comes from.** Gradium gates the model on Hugging Face, which needs an account, accepting its terms and a token. [Ollama](https://ollama.com/library/phonon) publishes the same weights as `phonon:40m-multilingual` with no sign-in, so tts-axi downloads them from Ollama's registry instead, the way `ollama pull` does. Ollama itself is not installed or run: tts-axi keeps its own runtime, its speed setting and its memory guard. We chose this to make setup easier: no Hugging Face account or key, and the same model.
 
@@ -135,7 +136,7 @@ Portuguese, French and Spanish use Gradium's [phonon-40m-multilingual](https://h
 
 `doctor --fix` merges Ollama's tensor files into `~/.tts-axi/models/phonon-40m-multilingual/`: `model.safetensors`, `default-voice.safetensors`, `config.json`, `tokenizer.json` and `LICENSE`. The voices come from Gradium's catalog, [phonon-voices](https://huggingface.co/gradium/phonon-voices), which is not gated. `TTS_AXI_MULTILINGUAL_MODEL` points tts-axi at another ptts model folder instead.
 
-The multilingual model itself speaks five languages: English, French, German, Portuguese (Brazil) and Spanish, and Phonon's catalog has 13 German and 25 Spanish voices. tts-axi uses it for Portuguese, French and Spanish, and keeps English on the smaller Neural Engine model; German needs only catalog and default-voice entries to be added. Try `tts-axi say "Hola a todos" --lang es`.
+The multilingual model itself speaks five languages: English, French, German, Portuguese (Brazil) and Spanish, and tts-axi uses it for all of them but English, which stays on the smaller Neural Engine model. Try `tts-axi say "Hola a todos" --lang es` or `tts-axi say "Guten Morgen" --lang de`.
 
 ## Memory
 

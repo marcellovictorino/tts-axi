@@ -6,6 +6,10 @@ All notable changes to tts-axi are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- German. `--lang de` works in `say`, `deck`, `render` and `voices`, speaking the 13 German catalog voices through the multilingual model on the CPU, with Henrik as the default (then Annika, Anton, Josefine). No new download: `doctor --fix` already fetches the model.
+
 ## [0.3.0] - 2026-11-23
 
 ### Added
