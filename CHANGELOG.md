@@ -6,6 +6,8 @@ All notable changes to tts-axi are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-23
+
 ### Added
 
 - Spanish. `--lang es` works in `say`, `deck`, `render` and `voices`, speaking the 25 Spanish catalog voices through the multilingual model on the CPU, with Noa as the default (then Marcos, Candela, Iker). No new download: `doctor --fix` already fetches the model.
