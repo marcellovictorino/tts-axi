@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"os/exec"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/marcellovictorino/tts-axi/internal/audio"
 	"github.com/marcellovictorino/tts-axi/internal/clones"
 	"github.com/marcellovictorino/tts-axi/internal/output"
+	"github.com/marcellovictorino/tts-axi/internal/voices"
 )
 
 func newVoiceCmd(a *App) *cobra.Command {
@@ -22,7 +24,7 @@ clip and its words never leave it. Built-in voices stay on Phonon.`,
 }
 
 func newVoiceAddCmd(a *App) *cobra.Command {
-	var clip, text, textFile string
+	var clip, text, textFile, lang string
 	c := &cobra.Command{
 		Use:   "add <name>",
 		Short: "Clone a voice from a recording and the words spoken in it",
@@ -35,10 +37,13 @@ The clip is converted to a 24 kHz mono WAV and kept with its words in
 ~/.tts-axi/voices/<name>, outside any repository and the library. Double
 quote marks are dropped from the words and lines are joined with single
 spaces. Use the voice like any other: --voice <name> in say, deck and
-render (English).
+render. --lang sets the language the clip speaks (default en; it for
+Italian, which has no built-in voices), so use a clip in that language.
 
   tts-axi voice add mf --clip ~/Music/voice-clone/mf-sample.m4a --text-file mf-words.md
-  tts-axi say "Good morning." --voice mf`,
+  tts-axi say "Good morning." --voice mf
+  tts-axi voice add ana --lang it --clip ana.m4a --text-file ana-words.md
+  tts-axi say "Buongiorno." --voice ana`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := a.load(); err != nil {
@@ -50,6 +55,9 @@ render (English).
 			}
 			if (text == "") == (textFile == "") {
 				return output.Usage([]string{"give the words with --text or --text-file"}, "give exactly one of --text and --text-file")
+			}
+			if !voices.IsLanguage(lang) {
+				return output.Usage([]string{"valid languages: " + strings.Join(voices.Languages, ", ")}, "unknown --lang %q", lang)
 			}
 			if err := clones.ValidName(name); err != nil {
 				return output.Usage(nil, "%v", err)
@@ -68,7 +76,7 @@ render (English).
 				}
 				words = t
 			}
-			v, err := clones.Add(cmd.Context(), "ffmpeg", a.paths.VoicesDir(), name, clip, words)
+			v, err := clones.Add(cmd.Context(), "ffmpeg", a.paths.VoicesDir(), name, lang, clip, words)
 			if err != nil {
 				return output.Fail(nil, "%v", err)
 			}
@@ -80,12 +88,14 @@ render (English).
 			if !a.engine().QwenInstalled() {
 				help = append([]string{"run `tts-axi doctor --fix` to download the cloned-voice model (3 GB), or it downloads on first use"}, help...)
 			}
-			a.printer.Emit(output.Obj{}.Set("voice", v.Name).Set("model", "qwen").Set("clip_seconds", round1(d.Seconds())).
+			a.printer.Emit(output.Obj{}.Set("voice", v.Name).Set("lang", v.Lang).Set("model", "qwen").Set("clip_seconds", round1(d.Seconds())).
 				Set("path", a.paths.VoicesDir()+"/"+v.Name).Set("help", help))
 			return nil
 		},
 	}
 	c.Flags().StringVar(&clip, "clip", "", "recording of the voice (any audio ffmpeg reads)")
+	c.Flags().StringVar(&lang, "lang", "en", "language of the clip and of the lines the voice speaks: en, pt, fr, es or it")
+	_ = c.RegisterFlagCompletionFunc("lang", fixed(voices.Languages...))
 	c.Flags().StringVar(&text, "text", "", "the exact words spoken in the clip")
 	c.Flags().StringVar(&textFile, "text-file", "", "a file holding the exact words spoken in the clip")
 	_ = c.MarkFlagFilename("clip")

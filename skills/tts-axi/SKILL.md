@@ -23,8 +23,8 @@ listed). Nothing ever prompts.
 | Several voices, chapters, pauses | `tts-axi render script.md` |
 | Narrate slides from speaker notes | `tts-axi deck slides.md [--images pngs/]` |
 | Narrated Slidev deck, or its video | `tts-axi deck slides.md --slidev` · `--video` (see below) |
-| Pick a voice | `tts-axi voices [--lang en\|pt\|fr\|es]` (the `model` column: phonon, or qwen for a cloned voice) |
-| Add a cloned voice (English) | `tts-axi voice add <name> --clip rec.m4a --text-file words.md`, then `--voice <name>` |
+| Pick a voice | `tts-axi voices [--lang en\|pt\|fr\|es\|it]` (the `model` column: phonon, or qwen for a cloned voice) |
+| Add a cloned voice (`--lang it` for Italian, which has no built-in voices) | `tts-axi voice add <name> --clip rec.m4a --text-file words.md`, then `--voice <name>` |
 | Find or delete earlier audio | `tts-axi library` · `tts-axi library rm <episode>` |
 | Something is wrong | `tts-axi doctor` (`tts-axi doctor --fix` installs the runtime) |
 

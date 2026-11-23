@@ -117,9 +117,13 @@ tts-axi voice add mf --clip recording.m4a --text-file words.md   # or --text "ex
 tts-axi say "Good morning." --voice mf
 tts-axi render day.md --voice mf          # mf narrates the text no speaker owns
 tts-axi deck talk.md --voice mf
+tts-axi voice add ana --lang it --clip ana.m4a --text-file ana-words.md   # Italian
+tts-axi say "Buongiorno." --voice ana
 ```
 
-`voice add` converts the clip to a 24 kHz mono WAV and keeps it with its words in `~/.tts-axi/voices/<name>`, outside any repository and the library. Give the exact words said in the clip: double quote marks are dropped and lines are joined with single spaces. A clip of 15 to 30 seconds is enough; a longer one raises the time and memory of every render. A cloned voice is English for now, and in a script a speaker named in `voices: {Host: mf}` or `--voice Host=mf` uses it (script speaker names start with a capital letter, so `mf:` alone is not a speaker).
+Italian (`--lang it`) has no built-in voices: its lines are spoken by a cloned voice, through the same Qwen3-TTS model, so it costs what any cloned voice costs (below). Without a cloned Italian voice, `--lang it` stops with how to add one. Use a clean 5 to 15 second Italian clip with its exact words; a clip in another language may leak its accent. Quality is not measured yet.
+
+`voice add` converts the clip to a 24 kHz mono WAV and keeps it with its words in `~/.tts-axi/voices/<name>`, outside any repository and the library. Give the exact words said in the clip: double quote marks are dropped and lines are joined with single spaces. A clip of 15 to 30 seconds is enough; a longer one raises the time and memory of every render. A cloned voice is English unless you add it with `--lang` (`en`, `pt`, `fr`, `es` or `it`); the lines it speaks take that language, so give a clip in the same language. In a script, a speaker named in `voices: {Host: mf}` or `--voice Host=mf` uses it (script speaker names start with a capital letter, so `mf:` alone is not a speaker).
 
 `doctor --fix` downloads the model, `Qwen3-TTS-12Hz-1.7B-Base-8bit` (3 GB), from Hugging Face with no account, pinned to one revision with every file's size and SHA-256 checked; a cloned render downloads it on first use if it is missing. Qwen costs far more than Phonon: about 10 to 14 seconds per 10 seconds of audio and 2.3 to 3.4 GB of memory, against 1 to 2 seconds and under 0.3 GB. The memory guard applies, relaxed only for the model's first load: until the first line is spoken, only critical pressure that lasts 5 seconds stops the run (loading 3 GB flickers critical pressure for under a second on a busy Mac). After that, swap growth is measured from that moment, pressure at warning is tolerated, and critical pressure stops it at once. On a Mac whose swap is nearly full, a render with several lines can still be stopped; close memory-hungry apps and run it again. Only clone a voice you have the right to use.
 

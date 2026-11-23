@@ -84,7 +84,7 @@ func (a *App) load() error {
 	}
 	cloned := make([]voices.Voice, len(stored))
 	for i, c := range stored {
-		cloned[i] = voices.Voice{Name: c.Name, Lang: "en", Description: "cloned voice (Qwen3-TTS)", Ref: c.Ref, RefText: c.Text}
+		cloned[i] = voices.Voice{Name: c.Name, Lang: c.Lang, Description: "cloned voice (Qwen3-TTS)", Ref: c.Ref, RefText: c.Text}
 	}
 	a.paths, a.settings, a.voices = p, s, vs.WithClones(cloned)
 	a.loaded = true

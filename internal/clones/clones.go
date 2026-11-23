@@ -21,6 +21,7 @@ import (
 const (
 	RefFile  = "reference.wav"
 	TextFile = "text.txt"
+	LangFile = "lang.txt" // absent for a voice added before languages: English
 )
 
 // Voice is one stored clone.
@@ -28,6 +29,7 @@ type Voice struct {
 	Name string
 	Ref  string // path of the reference WAV
 	Text string // the words spoken in it
+	Lang string // language code of the clip and of the lines it speaks
 }
 
 var nameRE = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]{0,31}$`)
@@ -51,7 +53,7 @@ func CleanText(s string) string {
 
 // Add converts clip to the reference WAV and stores it with its words as
 // root/<name>. It refuses to replace an existing voice.
-func Add(ctx context.Context, ffmpeg, root, name, clip, words string) (Voice, error) {
+func Add(ctx context.Context, ffmpeg, root, name, lang, clip, words string) (Voice, error) {
 	if err := ValidName(name); err != nil {
 		return Voice{}, err
 	}
@@ -77,10 +79,13 @@ func Add(ctx context.Context, ffmpeg, root, name, clip, words string) (Voice, er
 	if err := config.WriteFileAtomic(filepath.Join(tmp, TextFile), []byte(words+"\n"), 0o600); err != nil {
 		return Voice{}, err
 	}
+	if err := config.WriteFileAtomic(filepath.Join(tmp, LangFile), []byte(lang+"\n"), 0o600); err != nil {
+		return Voice{}, err
+	}
 	if err := os.Rename(tmp, dir); err != nil {
 		return Voice{}, err
 	}
-	return Voice{Name: name, Ref: filepath.Join(dir, RefFile), Text: words}, nil
+	return Voice{Name: name, Ref: filepath.Join(dir, RefFile), Text: words, Lang: lang}, nil
 }
 
 // List reads every stored voice, sorted by name. A folder without both files
@@ -106,7 +111,11 @@ func List(root string) ([]Voice, error) {
 		if _, err := os.Stat(filepath.Join(dir, RefFile)); err != nil {
 			continue
 		}
-		out = append(out, Voice{Name: e.Name(), Ref: filepath.Join(dir, RefFile), Text: strings.TrimSpace(string(text))})
+		lang := "en"
+		if b, err := os.ReadFile(filepath.Join(dir, LangFile)); err == nil && strings.TrimSpace(string(b)) != "" {
+			lang = strings.TrimSpace(string(b))
+		}
+		out = append(out, Voice{Name: e.Name(), Ref: filepath.Join(dir, RefFile), Text: strings.TrimSpace(string(text)), Lang: lang})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil

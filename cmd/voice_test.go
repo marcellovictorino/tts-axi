@@ -207,3 +207,34 @@ func TestQwenDownloadMustMatchItsPin(t *testing.T) {
 		t.Errorf("a refused download counted as installed:\n%s", r.out)
 	}
 }
+
+// Intent (TTS-15: Italian goes through Qwen with cloned voices, since it has
+// no catalog voices): a clone added with --lang it speaks Italian, reaches the
+// Qwen helper with lang it, and an English clone in the same script keeps en.
+func TestItalianCloneSpeaksItalianThroughQwen(t *testing.T) {
+	e := newEnv(t)
+	e.addVoice()
+	e.run("voice", "add", "ana", "--lang", "it", "--clip", e.clip(), "--text", "Buongiorno a tutti.").ok(t)
+	e.installQwen()
+	jobs := testutil.LogJobs(t)
+
+	if r := e.run("voices", "--lang", "it").ok(t); !strings.Contains(r.out, "ana") || strings.Contains(r.out, "mf") {
+		t.Errorf("voices --lang it:\n%s", r.out)
+	}
+	e.run("say", "Ciao, questa è una prova.", "--voice", "ana").ok(t)
+	e.run("say", "Hello.", "--voice", "mf").ok(t)
+	j := jobs()
+	if len(j) != 2 || j[0].Lang != "it" || j[1].Lang != "en" {
+		t.Fatalf("job languages: %+v", j)
+	}
+	// An English clone refuses an Italian request instead of speaking it wrong.
+	e.run("say", "Ciao.", "--voice", "mf", "--lang", "it").fails(t, 2, "mf is a en voice, not it")
+}
+
+// Intent (Italian has no built-in voices): asking for it without a clone is a
+// usage error that says how to add one, not a crash.
+func TestItalianWithoutACloneExplainsWhatToDo(t *testing.T) {
+	e := newEnv(t)
+	e.run("say", "Ciao.", "--lang", "it").fails(t, 2, "it has no built-in voices")
+	e.run("voice", "add", "x", "--lang", "xx", "--clip", e.clip(), "--text", "y").fails(t, 2, `unknown --lang "xx"`)
+}

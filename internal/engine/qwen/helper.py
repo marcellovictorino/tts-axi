@@ -13,7 +13,7 @@ import sys
 import time
 import wave
 
-LANGS = {"en": "english", "fr": "french", "pt": "portuguese"}
+LANGS = {"en": "english", "fr": "french", "pt": "portuguese", "it": "italian"}
 
 
 def emit(**record):

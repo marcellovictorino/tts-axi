@@ -80,6 +80,9 @@ French, Noa in Spanish).
 				if lang == "" {
 					lang = "en"
 				}
+				if !a.voices.HasBuiltIn(lang) {
+					return output.Usage([]string{fmt.Sprintf("add a cloned voice: tts-axi voice add <name> --lang %s --clip ref.m4a --text \"the words\"", lang), "then pass --voice <name>"}, "%s has no built-in voices; give --voice with a cloned %s voice", lang, lang)
+				}
 				v, _ = voices.Find(a.voices.Default(lang))
 			}
 			lines := make([]line, len(sc.Segments))

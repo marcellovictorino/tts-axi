@@ -46,7 +46,7 @@ func (v Voice) Model() string {
 }
 
 // Languages are the supported language codes, in display order.
-var Languages = []string{"en", "pt", "fr", "es"}
+var Languages = []string{"en", "pt", "fr", "es", "it"}
 
 // Defaults is the voice order per language: the first is the default voice,
 // the next ones go to the second, third... speaker of a script.
@@ -55,6 +55,7 @@ var Defaults = map[string][]string{
 	"pt": {"Davi", "Kauã", "Manuela-Lu", "Débora"},
 	"fr": {"Augustin", "Coralie"},
 	"es": {"Noa", "Marcos", "Candela", "Iker"},
+	// Italian has no built-in voices: its lines need a cloned voice.
 }
 
 var catalog []Voice
@@ -75,8 +76,8 @@ type Set struct {
 	clones []Voice
 }
 
-// WithClones adds cloned voices, which are English, so they can be found by
-// name like catalog voices.
+// WithClones adds cloned voices, each with its own language, so they can be
+// found by name like catalog voices.
 func (s Set) WithClones(vs []Voice) Set {
 	s.clones = append([]Voice(nil), vs...)
 	return s
@@ -130,7 +131,13 @@ func NewSet(overrides map[string][]string) (Set, error) {
 func (s Set) Order(lang string) []string { return s.order[lang] }
 
 // Default returns the default voice for a language.
-func (s Set) Default(lang string) string { return s.order[lang][0] }
+// It is empty for a language without built-in voices (Italian).
+func (s Set) Default(lang string) string {
+	if len(s.order[lang]) == 0 {
+		return ""
+	}
+	return s.order[lang][0]
+}
 
 // Rank returns the 1-based position of a voice in its language's default
 // order, or 0 when it is not one of the defaults.
@@ -247,6 +254,10 @@ func (c *Caster) Voice(speaker string) (Voice, error) {
 			return v, nil
 		}
 	}
+	if len(c.set.Order(c.lang)) == 0 {
+		return Voice{}, fmt.Errorf("%s has no built-in voices: add a cloned voice with `tts-axi voice add <name> --lang %s ...` and name it, for example `voices: {%s: <name>}` in the front matter or --voice '%s=<name>'",
+			c.lang, c.lang, nameOrNarrator(speaker), nameOrNarrator(speaker))
+	}
 	if speaker == "" {
 		v, _ := Find(c.set.Default(c.lang))
 		c.assigned[key] = v
@@ -255,3 +266,13 @@ func (c *Caster) Voice(speaker string) (Voice, error) {
 	return Voice{}, fmt.Errorf("speaker %q has no voice: the %s default voices (%s) are all taken; name a voice for it, for example `voices: {%s: %s}` in the front matter or --voice '%s=%s'",
 		speaker, c.lang, strings.Join(c.set.Order(c.lang), ", "), speaker, Names(c.lang)[0], speaker, Names(c.lang)[0])
 }
+
+func nameOrNarrator(speaker string) string {
+	if speaker == "" {
+		return "Narrator"
+	}
+	return speaker
+}
+
+// HasBuiltIn reports whether a language has built-in voices.
+func (s Set) HasBuiltIn(lang string) bool { return len(s.order[lang]) > 0 }

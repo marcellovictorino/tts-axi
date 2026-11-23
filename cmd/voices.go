@@ -82,7 +82,7 @@ the next ones go to a script's second, third... speaker. Change the order in
 			return nil
 		},
 	}
-	c.Flags().StringVar(&lang, "lang", "", "only this language: en, pt, fr or es")
+	c.Flags().StringVar(&lang, "lang", "", "only this language: en, pt, fr, es or it")
 	_ = c.RegisterFlagCompletionFunc("lang", fixed(voices.Languages...))
 	c.Flags().BoolVar(&full, "full", false, "show whole descriptions")
 	return c

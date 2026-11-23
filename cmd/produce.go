@@ -45,7 +45,7 @@ type speakFlags struct {
 }
 
 func (f *speakFlags) register(c *cobra.Command, withOut bool) {
-	c.Flags().StringVar(&f.lang, "lang", "", "language: en, pt, fr or es (default: from the voice or the front matter, else en)")
+	c.Flags().StringVar(&f.lang, "lang", "", "language: en, pt, fr, es or it (default: from the voice or the front matter, else en)")
 	c.Flags().StringVar(&f.speed, "speed", "", "Phonon duration_delta: 0 is the model's pace, positive is slower (default 0.15)")
 	c.Flags().StringVar(&f.engine, "engine", "auto", "auto (Neural Engine, CPU fallback) or cpu")
 	c.Flags().StringVar(&f.title, "title", "", "episode title (default: from the text)")
@@ -118,7 +118,7 @@ func speakLines(ctx context.Context, a *App, stage string, lines []line, speed f
 		// Phonon job per language.
 		key := l.Voice.Lang
 		if l.Voice.Cloned() {
-			key = "clone"
+			key = "clone-" + l.Voice.Lang // one Qwen job per language
 		}
 		j, ok := jobs[key]
 		if !ok {

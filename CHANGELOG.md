@@ -6,6 +6,10 @@ All notable changes to tts-axi are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Italian. `tts-axi voice add <name> --lang it --clip ... --text ...` stores a cloned voice that speaks Italian through Qwen3-TTS (no new download), and `--lang it` is accepted in `say`, `deck`, `render` and `voices`. Italian has no built-in voices, so a line needs a cloned Italian voice; without one the command stops and says how to add it. Cloned voices keep a language (`--lang`, default `en`), and a render with clones in two languages runs one Qwen job per language.
+
 ## [0.3.0] - 2026-11-23
 
 ### Added
