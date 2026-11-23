@@ -1,5 +1,70 @@
 [
  {
+  "name": "Annika",
+  "lang": "de",
+  "description": "A sparky, attentive German adult voice that gets to the point with a smile. Ideal for fast, efficient customer support and helpful voice assistants."
+ },
+ {
+  "name": "Anton",
+  "lang": "de",
+  "description": "A vibrant, engaging German adult voice that makes every explanation feel personal. Built for product guides and walk-through assistants."
+ },
+ {
+  "name": "Henrik",
+  "lang": "de",
+  "description": "An easy-going, friendly German adult voice that puts callers instantly at ease. Great for onboarding assistants and warm concierge interactions."
+ },
+ {
+  "name": "Jette",
+  "lang": "de",
+  "description": "An upbeat young German voice with a light girlish tone and warm bounce, a chipper assistant who keeps things moving with a smile."
+ },
+ {
+  "name": "Josefine",
+  "lang": "de",
+  "description": "Rounded and even in tone, sincere at the phrase ends, with consonants that hold up over a handset."
+ },
+ {
+  "name": "Jule",
+  "lang": "de",
+  "description": "Open and cheerful, sitting high and close over music, with an airy lift that softens where the copy turns personal."
+ },
+ {
+  "name": "Leon",
+  "lang": "de",
+  "description": "A bright, welcoming German adult voice with the warmth of a great receptionist. Perfect for greeting customers and friendly front-line support."
+ },
+ {
+  "name": "Lotta",
+  "lang": "de",
+  "description": "High forward energy with a close, present tone and crisp consonant attack that cuts through a music bed, plus real lift on the punchline."
+ },
+ {
+  "name": "Mats",
+  "lang": "de",
+  "description": "A sparky, attentive German adult voice that gets to the point with a smile. Ideal for fast, efficient customer support and helpful voice assistants."
+ },
+ {
+  "name": "Mika",
+  "lang": "de",
+  "description": "Punchy and to the point, with a firm, resonant core, clean word endings and real snap between loud and quiet."
+ },
+ {
+  "name": "Mirko",
+  "lang": "de",
+  "description": "Punchy and close-miked in feel, with hard edges on the consonants and a decisive drop on the final line."
+ },
+ {
+  "name": "Nele",
+  "lang": "de",
+  "description": "Rounded, open tone with gentle lift at the ends of phrases and an easy, flowing rhythm."
+ },
+ {
+  "name": "Svea",
+  "lang": "de",
+  "description": "Sparky and to the point, with clean consonant edges, brisk rhythm and a decisive drop on the final line."
+ },
+ {
   "name": "Alfie",
   "lang": "en",
   "description": "Punchy and forward, with crisp consonant attack and a pitch that lifts across a line, sitting high over a music bed."

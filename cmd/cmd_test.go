@@ -227,6 +227,25 @@ func TestSaySpanish(t *testing.T) {
 	}
 }
 
+// Intent (owner: German is a secondary language spoken through the same
+// multilingual model): --lang de is accepted and speaks with Henrik, the first
+// German default voice, and the 13 German catalog voices are listed.
+func TestSayGerman(t *testing.T) {
+	e := newEnv(t)
+	jobs := testutil.LogJobs(t)
+	r := e.run("say", "Guten Morgen.", "--lang", "de", "--out", filepath.Join(e.dir, "morgen.m4a")).ok(t)
+	if !strings.Contains(r.out, "engine: ptts-cpu") || !strings.Contains(r.out, "voices[1]: Henrik") {
+		t.Errorf("output:\n%s", r.out)
+	}
+	if j := jobs(); len(j) != 1 || j[0].Lang != "de" || j[0].Items[0].Voice != "Henrik" {
+		t.Errorf("jobs %+v", j)
+	}
+	v := e.run("voices", "--lang", "de").ok(t)
+	if !strings.Contains(v.out, "voices[13]{") || !strings.Contains(v.out, "Henrik,de,default,phonon,ptts-cpu,") {
+		t.Errorf("voices:\n%s", v.out)
+	}
+}
+
 // Intent (spec: render makes one file with chapter marks and real-silence
 // pauses from a multi-voice script).
 func TestRenderChaptersVoicesAndPauses(t *testing.T) {
@@ -344,7 +363,7 @@ func TestStoppedRenderWritesNothing(t *testing.T) {
 // Intent (axi: exit code 2 for usage errors, with the valid choices listed).
 func TestUsageErrors(t *testing.T) {
 	e := newEnv(t)
-	e.run("say", "Hi", "--lang", "de").fails(t, 2, "valid languages: en, pt, fr, es")
+	e.run("say", "Hi", "--lang", "it").fails(t, 2, "valid languages: en, pt, fr, es, de")
 	e.run("say", "Hi", "--voice", "Nobody").fails(t, 2, "unknown voice")
 	e.run("say", "Hi", "--voice", "Davi", "--lang", "en").fails(t, 2, "Davi is a pt voice, not en")
 	e.run("say", "Hi", "--out", "x.ogg").fails(t, 2, "end --out with .mp3, .m4a or .wav")
@@ -441,7 +460,7 @@ func TestDoctor(t *testing.T) {
 func TestVoicesListsDefaultsFirst(t *testing.T) {
 	e := newEnv(t)
 	r := e.run("voices").ok(t)
-	if !strings.HasPrefix(r.out, "voices[89]{name,lang,default,model,engine,description}:\n  Hugh,en,default,phonon,ane,") {
+	if !strings.HasPrefix(r.out, "voices[102]{name,lang,default,model,engine,description}:\n  Hugh,en,default,phonon,ane,") {
 		t.Errorf("output starts:\n%.200s", r.out)
 	}
 	lines := strings.Split(r.out, "\n")
